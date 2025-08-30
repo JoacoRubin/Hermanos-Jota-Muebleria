@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle de Producto | Hermanos Jota</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style1.css">
+    <script src="productos.js" defer></script>
+    <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const id = parseInt(params.get('id'));
+        const prod = productos.find(p => p.id === id);
+        const contenedor = document.getElementById('detalle-producto');
+        if (!prod) {
+            contenedor.innerHTML = "<p>Producto no encontrado.</p>";
+            return;
+        }
+        let detallesHtml = '<ul class="detalle-lista">';
+        for (const clave in prod.detalles) {
+            detallesHtml += `<li><strong>${clave}:</strong> ${prod.detalles[clave]}</li>`;
+        }
+        detallesHtml += '</ul>';
+        contenedor.innerHTML = `
+            <figure class="detalle-img">
+                <img src="${prod.imagen}" alt="${prod.nombre}" />
+            </figure>
+            <section class="detalle-info">
+                <header>
+                    <h1>${prod.nombre}</h1>
+                </header>
+                <p class="detalle-desc">${prod.descripcion}</p>
+                ${detallesHtml}
+                <div class="detalle-precio">${prod.precio}</div>
+                <button class="producto-btn" title="Añadir al Carrito" aria-label="Añadir al Carrito">Añadir al Carrito</button>
+            </section>
+        `;
+    });
+    </script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="logo.svg" alt="Logo Hermanos Jota" class="logo-img">
+            <span class="brand">Hermanos Jota</span>
+        </div>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="productos.html">Productos</a>
+            <a href="#">Contacto</a>
+        </nav>
+        <span class="carrito-header">
+            <span class="carrito-icono" title="Carrito">🛒</span>
+            <span id="carrito-contador" class="carrito-contador">0</span>
+        </span>
+    </header>
+    <main>
+        <article class="detalle-producto" id="detalle-producto" aria-label="Detalle del producto">
+        </article>
+    </main>
+    <footer>
+        Hermanos Jota · Av. San Juan 2847, CABA · 
+        <a href="mailto:info@hermanosjota.com.ar">info@hermanosjota.com.ar</a> · © 2025
+    </footer>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Contacto | Hermanos Jota</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style1.css">
+    <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('contacto-form');
+        const mensajeExito = document.getElementById('mensaje-exito');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Validacion
+            const nombre = form.nombre.value.trim();
+            const email = form.email.value.trim();
+            const mensaje = form.mensaje.value.trim();
+            let error = "";
+            if (nombre.length < 2) error = "Por favor, ingresa tu nombre.";
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = "Por favor, ingresa un email válido.";
+            else if (mensaje.length < 5) error = "Por favor, escribe tu mensaje.";
+            if (error) {
+                mensajeExito.textContent = error;
+                mensajeExito.style.color = "red";
+                return;
+            }
+            // Éxito
+            mensajeExito.textContent = "¡Gracias por contactarnos! Pronto responderemos tu consulta.";
+            mensajeExito.style.color = "green";
+            form.reset();
+        });
+    });
+    </script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="logo.svg" alt="Logo Hermanos Jota" class="logo-img">
+            <span class="brand">Hermanos Jota</span>
+        </div>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="productos.html">Productos</a>
+            <a href="contacto.html" class="active">Contacto</a>
+        </nav>
+        <span class="carrito-header">
+            <span class="carrito-icono" title="Carrito">🛒</span>
+            <span id="carrito-contador" class="carrito-contador">0</span>
+        </span>
+    </header>
+    <main>
+        <section class="hero">
+            <h1 class="hero-title">Contacto</h1>
+            <p class="hero-desc">
+                Nuestros clientes suelen tener preguntas. Dejanos tu consulta y te responderemos a la brevedad.
+            </p>
+        </section>
+        <section>
+            <form id="contacto-form" class="formulario-contacto" autocomplete="off" novalidate>
+                <label for="nombre">Nombre:</label>
+                <input type="text" id="nombre" name="nombre" required minlength="2">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                <label for="mensaje">Mensaje:</label>
+                <textarea id="mensaje" name="mensaje" required minlength="5"></textarea>
+                <button type="submit" class="producto-btn">Enviar</button>
+                <div id="mensaje-exito" style="margin-top:1em;"></div>
+            </form>
+        </section>
+    </main>
+    <footer>
+        Hermanos Jota · Av. San Juan 2847, CABA · 
+        <a href="mailto:info@hermanosjota.com.ar">info@hermanosjota.com.ar</a> · © 2025
+    </footer>
+</body>
+</html>
