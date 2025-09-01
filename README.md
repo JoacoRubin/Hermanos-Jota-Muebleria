@@ -15,3 +15,9 @@ productos.js: Archivo JavaScript que agrega interactividad a la página de produ
 style1.css: Archivo de estilos que define la apariencia visual de todo el sitio. Controla colores, tipografías, disposición de elementos, márgenes, botones, menús y la adaptación a distintos dispositivos.
 
 En conjunto, estos archivos implementan un sitio web funcional y visualmente atractivo para una mueblería, permitiendo a los usuarios navegar por el catálogo, consultar detalles de productos, contactar a la empresa
+
+Listado: 
+HTML5
+CSS3
+JavaScript
+Imagenes
