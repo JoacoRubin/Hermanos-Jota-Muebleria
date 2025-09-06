@@ -178,5 +178,14 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('carrito', cant + 1);
             actualizarContador();
         }
+        // Disminuir carrito
+        if (e.target.classList.contains('producto-btn-disminuir')) {
+            let cant = parseInt(localStorage.getItem('carrito') || '0');
+            if (cant>0){
+                localStorage.setItem('carrito',cant-1);
+                actualizarContador();
+            }
+        }
+
     });
 });
