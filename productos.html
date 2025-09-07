@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Catálogo | Hermanos Jota</title>
@@ -7,17 +8,17 @@
     <link rel="stylesheet" href="style1.css">
     <script src="productos.js" defer></script>
     <script defer>
-    document.addEventListener('DOMContentLoaded', () => {
-        const grilla = document.getElementById('grilla-productos');
-        const buscador = document.getElementById('buscador');
-        function renderProductos(filtro = "") {
-            grilla.innerHTML = "";
-            productos
-                .filter(p => p.nombre.toLowerCase().includes(filtro.toLowerCase()))
-                .forEach(prod => {
-                    const article = document.createElement('article');
-                    article.className = 'producto-card';
-                    article.innerHTML = `
+        document.addEventListener('DOMContentLoaded', () => {
+            const grilla = document.getElementById('grilla-productos');
+            const buscador = document.getElementById('buscador');
+            function renderProductos(filtro = "") {
+                grilla.innerHTML = "";
+                productos
+                    .filter(p => p.nombre.toLowerCase().includes(filtro.toLowerCase()))
+                    .forEach(prod => {
+                        const article = document.createElement('article');
+                        article.className = 'producto-card';
+                        article.innerHTML = `
                         <a href="producto.html?id=${prod.id}" aria-label="Ver detalle de ${prod.nombre}">
                             <img src="${prod.imagen}" alt="${prod.nombre}" class="producto-img">
                             <h3 class="producto-nombre">${prod.nombre}</h3>
@@ -25,14 +26,15 @@
                             <div class="producto-precio">${prod.precio}</div>
                         </a>
                     `;
-                    grilla.appendChild(article);
-                });
-        }
-        renderProductos();
-        buscador.addEventListener('input', e => renderProductos(e.target.value));
-    });
+                        grilla.appendChild(article);
+                    });
+            }
+            renderProductos();
+            buscador.addEventListener('input', e => renderProductos(e.target.value));
+        });
     </script>
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -44,16 +46,19 @@
             <a href="productos.html" class="active">Productos</a>
             <a href="contacto.html">Contacto</a>
         </nav>
-        <span class="carrito-header">
-            <span class="carrito-icono" title="Carrito">🛒</span>
-            <span id="carrito-contador" class="carrito-contador">0</span>
-        </span>
+        <div class="carrito-header">
+            <button>
+                <div class="carrito-icono" title="Carrito">🛒</div>
+            </button>
+            <div id="carrito-contador" class="carrito-contador">0</div>
+        </div>
     </header>
     <main>
         <section class="hero">
             <h1 class="hero-title">Catálogo de Productos</h1>
             <form role="search" aria-label="Buscar producto">
-                <input type="search" id="buscador" placeholder="Buscar producto..." autocomplete="off" style="margin:1rem auto;display:block;max-width:350px;padding:0.5rem 1rem;border-radius:8px;border:1px solid #ccc;">
+                <input type="search" id="buscador" placeholder="Buscar producto..." autocomplete="off"
+                    style="margin:1rem auto;display:block;max-width:350px;padding:0.5rem 1rem;border-radius:8px;border:1px solid #ccc;">
             </form>
         </section>
         <section aria-label="Listado de productos">
@@ -61,8 +66,9 @@
         </section>
     </main>
     <footer>
-        Hermanos Jota · Av. San Juan 2847, CABA · 
+        Hermanos Jota · Av. San Juan 2847, CABA ·
         <a href="mailto:info@hermanosjota.com.ar">info@hermanosjota.com.ar</a> · © 2025
     </footer>
 </body>
+
 </html>

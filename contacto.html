@@ -1,37 +1,40 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Contacto | Hermanos Jota</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style1.css">
+    <script src="productos.js" defer></script>
     <script defer>
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('contacto-form');
-        const mensajeExito = document.getElementById('mensaje-exito');
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Validacion
-            const nombre = form.nombre.value.trim();
-            const email = form.email.value.trim();
-            const mensaje = form.mensaje.value.trim();
-            let error = "";
-            if (nombre.length < 2) error = "Por favor, ingresa tu nombre.";
-            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = "Por favor, ingresa un email válido.";
-            else if (mensaje.length < 5) error = "Por favor, escribe tu mensaje.";
-            if (error) {
-                mensajeExito.textContent = error;
-                mensajeExito.style.color = "red";
-                return;
-            }
-            // Éxito
-            mensajeExito.textContent = "¡Gracias por contactarnos! Pronto responderemos tu consulta.";
-            mensajeExito.style.color = "green";
-            form.reset();
-        });
-    });
+            document.addEventListener('DOMContentLoaded', () => {
+                const form = document.getElementById('contacto-form');
+                const mensajeExito = document.getElementById('mensaje-exito');
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    // Validacion
+                    const nombre = form.nombre.value.trim();
+                    const email = form.email.value.trim();
+                    const mensaje = form.mensaje.value.trim();
+                    let error = "";
+                    if (nombre.length < 2) error = "Por favor, ingresa tu nombre.";
+                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = "Por favor, ingresa un email válido.";
+                    else if (mensaje.length < 5) error = "Por favor, escribe tu mensaje.";
+                    if (error) {
+                        mensajeExito.textContent = error;
+                        mensajeExito.style.color = "red";
+                        return;
+                    }
+                    // Éxito
+                    mensajeExito.textContent = "¡Gracias por contactarnos! Pronto responderemos tu consulta.";
+                    mensajeExito.style.color = "green";
+                    form.reset();
+                });
+            });
     </script>
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -43,10 +46,12 @@
             <a href="productos.html">Productos</a>
             <a href="contacto.html" class="active">Contacto</a>
         </nav>
-        <span class="carrito-header">
-            <span class="carrito-icono" title="Carrito">🛒</span>
-            <span id="carrito-contador" class="carrito-contador">0</span>
-        </span>
+        <div class="carrito-header">
+            <button>
+                <div class="carrito-icono" title="Carrito">🛒</div>
+            </button>
+            <div id="carrito-contador" class="carrito-contador">0</div>
+        </div>
     </header>
     <main>
         <section class="hero">
@@ -69,8 +74,9 @@
         </section>
     </main>
     <footer>
-        Hermanos Jota · Av. San Juan 2847, CABA · 
+        Hermanos Jota · Av. San Juan 2847, CABA ·
         <a href="mailto:info@hermanosjota.com.ar">info@hermanosjota.com.ar</a> · © 2025
     </footer>
 </body>
+
 </html>

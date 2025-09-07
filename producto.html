@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Detalle de Producto | Hermanos Jota</title>
@@ -7,21 +8,21 @@
     <link rel="stylesheet" href="style1.css">
     <script src="productos.js" defer></script>
     <script defer>
-    document.addEventListener('DOMContentLoaded', () => {
-        const params = new URLSearchParams(window.location.search);
-        const id = parseInt(params.get('id'));
-        const prod = productos.find(p => p.id === id);
-        const contenedor = document.getElementById('detalle-producto');
-        if (!prod) {
-            contenedor.innerHTML = "<p>Producto no encontrado.</p>";
-            return;
-        }
-        let detallesHtml = '<ul class="detalle-lista">';
-        for (const clave in prod.detalles) {
-            detallesHtml += `<li><strong>${clave}:</strong> ${prod.detalles[clave]}</li>`;
-        }
-        detallesHtml += '</ul>';
-        contenedor.innerHTML = `
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const id = parseInt(params.get('id'));
+            const prod = productos.find(p => p.id === id);
+            const contenedor = document.getElementById('detalle-producto');
+            if (!prod) {
+                contenedor.innerHTML = "<p>Producto no encontrado.</p>";
+                return;
+            }
+            let detallesHtml = '<ul class="detalle-lista">';
+            for (const clave in prod.detalles) {
+                detallesHtml += `<li><strong>${clave}:</strong> ${prod.detalles[clave]}</li>`;
+            }
+            detallesHtml += '</ul>';
+            contenedor.innerHTML = `
             <figure class="detalle-img">
                 <img src="${prod.imagen}" alt="${prod.nombre}" />
             </figure>
@@ -36,9 +37,10 @@
                 <button class="producto-btn-disminuir" title="Quitar del Carrito" arial-label="Quitar del Carrito">Quitar del Carrito</button>
             </section>
         `;
-    });
+        });
     </script>
 </head>
+
 <body>
     <header>
         <div class="logo">
@@ -50,18 +52,21 @@
             <a href="productos.html">Productos</a>
             <a href="contacto.html">Contacto</a>
         </nav>
-        <span class="carrito-header">
-            <span class="carrito-icono" title="Carrito">🛒</span>
-            <span id="carrito-contador" class="carrito-contador">0</span>
-        </span>
+        <div class="carrito-header">
+            <button>
+                <div class="carrito-icono" title="Carrito">🛒</div>
+            </button>
+            <div id="carrito-contador" class="carrito-contador">0</div>
+        </div>
     </header>
     <main>
         <article class="detalle-producto" id="detalle-producto" aria-label="Detalle del producto">
         </article>
     </main>
     <footer>
-        Hermanos Jota · Av. San Juan 2847, CABA · 
+        Hermanos Jota · Av. San Juan 2847, CABA ·
         <a href="mailto:info@hermanosjota.com.ar">info@hermanosjota.com.ar</a> · © 2025
     </footer>
 </body>
+
 </html>
