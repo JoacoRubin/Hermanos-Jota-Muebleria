@@ -1,3 +1,9 @@
+- Joaquin Rubinstein
+- Andres Suarez
+- Gonzalo Ruiz
+- Guillermo Villalba
+- Ezequiel Salvatierra
+
 Nombre del proyecto: Muebleria Hermanos Jota.
 
 Breve Descrpición: 
