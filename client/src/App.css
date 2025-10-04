@@ -40,3 +40,141 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Estilos para las tarjetas de productos */
+.tarjeta-productos {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.tarjeta-productos:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: #007bff;
+}
+
+.producto-nombre {
+  color: #333;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.producto-imagen {
+  width: 100%;
+  max-width: 300px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.producto-descripcion {
+  color: #666;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.producto-precio {
+  font-weight: bold;
+  color: #007bff;
+  font-size: 1.1rem;
+}
+
+/* Lista de productos */
+.lista-productos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 2rem;
+}
+
+/* Navbar */
+.Navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.nav-tittle h1 {
+  margin: 0;
+  color: #333;
+}
+
+.carrito-contador {
+  background-color: #007bff !important;
+  color: white !important;
+  padding: 5px 10px !important;
+  border-radius: 15px !important;
+  font-weight: bold !important;
+  text-decoration: none;
+}
+
+/* Botones */
+button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 5px;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+/* Formulario de contacto */
+.formulario-contacto {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.formulario-contacto input,
+.formulario-contacto select,
+.formulario-contacto textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.formulario-contacto input:focus,
+.formulario-contacto select:focus,
+.formulario-contacto textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.formulario-contacto .error {
+  border-color: #dc3545;
+}
+
+.formulario-contacto .mensaje-exito {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+}
+
+.formulario-contacto .mensaje-error {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 5px;
+}

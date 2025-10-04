@@ -3,23 +3,17 @@ import TarjetaProductos from "./TarjetaProductos";
 
 export default function ListaProductos ({productos, onSeleccionar}){
     return(
-        <div>
+        <div className="lista-productos">
               {productos.map(producto =>(
-                     <div key={producto.id}>
                       <TarjetaProductos
-                        
+                        key={producto.id}
                         nombre={producto.nombre}
                         imagen={producto.imagen}
                         descripcion={producto.descripcion}
                         precio={producto.precio}
-                        
+                        onClick={() => onSeleccionar(producto)}
                       />
-                      <button onClick={()=> onSeleccionar(producto)}>
-                      Ver Detalles
-                    </button>
-                    </div>
                     ))}
-                   
         </div>
     )
     
