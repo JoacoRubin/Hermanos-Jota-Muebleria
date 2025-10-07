@@ -143,37 +143,6 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm r
 
 ---
 
----
-
-## 📊 Consigna Final - Sprint 3 y 4 - NEXUS
-
-### ✅ Requisitos Técnicos Implementados
-
-- **Backend API REST** con Node.js y Express
-- **Frontend SPA** con React y Vite
-- **Base de datos** simulada con archivos JSON
-- **Sistema de enrutamiento** y navegación
-- **Arquitectura modular** y escalable
-- **Manejo de estados** y componentes reutilizables
-
-### ✅ Funcionalidades de E-commerce
-
-- **Catálogo de productos** con visualización de imágenes
-- **Sistema de carrito** con funciones CRUD
-- **Formularios funcionales** con validación
-- **Interfaz responsiva** y moderna
-- **Integración Frontend-Backend** completa
-
-### ✅ Buenas Prácticas Aplicadas
-
-- **Separación de responsabilidades** (MVC pattern)
-- **Código limpio** y documentado
-- **Manejo de errores** y estados de carga
-- **Estructura de proyecto** organizada
-- **Control de versiones** con Git
-
----
-
 ## 🚀 URLs de la Aplicación
 
 Una vez ejecutados ambos servidores:
