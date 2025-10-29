@@ -155,6 +155,3 @@ DELETE /api/productos/:id  # Eliminar producto
 - Asegúrate de que las dependencias estén instaladas correctamente
 
 ---
-
-**Versión**: 1.0.0  
-**Fecha de última actualización**: Octubre 2025
