@@ -150,18 +150,7 @@ DELETE /api/productos/:id  # Eliminar producto
 - Confirmaciones para acciones destructivas
 - Navegación intuitiva entre páginas
 
-## Próximos Pasos Sugeridos
 
-1. **Funcionalidad de Edición**: Agregar ruta y formulario para editar productos existentes
-2. **Búsqueda y Filtros**: Implementar funcionalidades de búsqueda en el catálogo
-3. **Paginación**: Agregar paginación para catálogos con muchos productos
-4. **Autenticación**: Proteger rutas administrativas con autenticación
-5. **Gestión de Imágenes**: Implementar subida de imágenes al servidor
-
-## Soporte y Contacto
-
-Para preguntas o problemas relacionados con este proyecto:
-- Revisa la documentación del backend correspondiente
 - Verifica que el servidor API esté ejecutándose en el puerto correcto
 - Asegúrate de que las dependencias estén instaladas correctamente
 
