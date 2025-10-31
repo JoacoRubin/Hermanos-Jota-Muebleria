@@ -1,157 +1,183 @@
-# Catálogo de Productos - Frontend React
+# 🪑 Mueblería Hermanos Jota - E-commerce Full Stack
 
-## Descripción
-Aplicación frontend desarrollada en React que implementa un catálogo de productos con funcionalidades completas de CRUD (Create, Read, Update, Delete) que se conecta con una API backend.
+## 👥 Integrantes del Proyecto
+Joaquin Rubinstein
+Andres Suarez
+Gonzalo Ruiz
+Guillermo Villalba
+Ezequiel Salvatierra
 
-## Tecnologías Utilizadas
-- **React 18** - Framework de JavaScript para interfaces de usuario
-- **React Router DOM 6** - Gestión de enrutamiento y navegación
-- **Vite** - Herramienta de construcción y desarrollo rápido
-- **CSS Modules** - Estilos modulares y componentes
+---
 
-## Características Principales
+## 📋 Descripción del Proyecto
 
-### 🎯 Enrutamiento Completo
-- `/` - Página de inicio con bienvenida
-- `/productos` - Catálogo completo de productos
-- `/productos/:id` - Página de detalle de producto específico
-- `/contacto` - Formulario de contacto
-- `/admin/crear-producto` - Formulario para crear nuevos productos
+**Mueblería Hermanos Jota** es una aplicación web de e-commerce desarrollada para la venta de muebles premium. El proyecto implementa una arquitectura Full Stack con Node.js/Express en el backend y React/Vite en el frontend, ofreciendo una experiencia de usuario completa para la navegación, visualización y gestión de productos.
 
-### 📡 Integración con API
-- **Consumo de API REST** para obtener productos
-- **Gestión de estados** de carga y error
-- **Operaciones CRUD** completas:
-  - GET: Listar todos los productos
-  - GET: Obtener producto por ID
-  - POST: Crear nuevo producto
-  - DELETE: Eliminar producto
+### ✨ Funcionalidades Sprint 5 y 6
+- 📱 **Catálogo de Productos**: Visualización interactiva de muebles con imágenes
+- 🔍 **Vista de Detalles**: Información completa de cada producto
+- 🛒 **Carrito de Compras**: Sistema completo de agregar/quitar/gestionar productos
+- 📞 **Formulario de Contacto**: Sistema de contacto con validación
+- 🧭 **Navegación SPA**: Navegación fluida entre secciones sin recarga
+- 🗄️ **Persistencia real**: Productos guardados en MongoDB Atlas
+- 📝 **CRUD Completo**: Crear, editar y eliminar productos desde el frontend
+- 🔐 **Variables de entorno**: Configuración segura con `.env`
 
-### 🎨 Interfaz de Usuario
-- **Diseño responsive** adaptable a diferentes dispositivos
-- **Navegación intuitiva** con menú principal
-- **Estados visuales** para carga, error y éxito
-- **Confirmaciones** para acciones destructivas
+---
+
+## 🚀 Instalación y Ejecución
+
+### 1️⃣ Clonar el Repositorio
+```bash
+git clone https://github.com/TU_USUARIO/Hermanos-Jota-Muebleria-Sprint5-6.git
+cd Hermanos-Jota-Muebleria-Sprint5-6
+```
+
+### 2️⃣ Configurar Variables de Entorno
+
+#### Backend (`backend/.env`)
+Crea el archivo `.env` en la carpeta `backend` y agrega:
+```
+MONGO_URI=mongodb+srv://<usuario>:<contraseña>@cluster0.jo6svin.mongodb.net/?appName=Cluster0
+PORT=5000
+```
+- Reemplaza `<usuario>` y `<contraseña>` por tus credenciales de MongoDB Atlas.
+
+#### Frontend
+No requiere variables de entorno para desarrollo local. El frontend está configurado para consumir la API en `http://localhost:5000`.
+
+---
+
+### 3️⃣ Instalar Dependencias
+
+#### Backend
+```bash
+cd backend
+npm install
+```
+
+#### Frontend
+```bash
+cd ..
+npm install
+```
+
+---
+
+### 4️⃣ Ejecutar el Proyecto
+
+#### Iniciar el Backend (Puerto 5000)
+```bash
+# Desde la carpeta backend
+npm start
+```
+El servidor backend estará disponible en: `http://localhost:5000`
+- **API productos**: http://localhost:5000/api/productos
+
+#### Iniciar el Frontend (Puerto 3000)
+```bash
+# Desde la raíz del proyecto (en otra terminal)
+npm run dev
+```
+La aplicación frontend estará disponible en: `http://localhost:3000`
+
+### 📌 Comandos Rápidos
+
+#### Opción 1: Dos terminales separadas
+```bash
+# Terminal 1 - Backend
+cd backend && npm start
+
+# Terminal 2 - Frontend  
+npm run dev
+```
+
+#### Opción 2: Una sola terminal (Windows PowerShell)
+```powershell
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm start" ; Start-Sleep -Seconds 3 ; npm run dev
+```
+
+### 🔧 Tecnologías Utilizadas
+
+#### Backend
+- **Node.js**: Runtime de JavaScript
+- **Express.js**: Framework web minimalista
+- **Mongoose**: ODM para MongoDB
+- **MongoDB Atlas**: Base de datos en la nube
+- **Middleware personalizado**: Logging y manejo de errores
+
+#### Frontend
+- **React 18**: Biblioteca de interfaz de usuario
+- **Vite**: Herramienta de build rápida
+- **CSS**: Estilos personalizados con efectos y responsividad
+- **Fetch API**: Comunicación con el backend
+- **React Router DOM**: Navegación profesional
+
+## 🚀 URLs de la Aplicación
+
+Una vez ejecutados ambos servidores:
+
+### 🖥️ Frontend (Interfaz de Usuario)
+- **Aplicación principal**: http://localhost:3000
+- **Navegación disponible**: Inicio, Productos, Detalle, Contacto, Carrito, Crear/Editar Producto
+- **Aplicación desplegada**: [https://precious-fudge-aa2969.netlify.app](https://precious-fudge-aa2969.netlify.app)
+
+### 🔌 Backend (API REST)
+- **API productos**: http://localhost:5000/api/productos
+- **Producto específico**: http://localhost:5000/api/productos/:id
+
+## Backend desplegado en Render
+La API está disponible públicamente en:
+
+[https://hermanos-jota-muebleria.onrender.com](https://hermanos-jota-muebleria.onrender.com)
+
+Puedes consumir los endpoints desde el frontend o herramientas como Postman.
+
+---
 
 ## Estructura del Proyecto
 
 ```
-src/
-├── components/          # Componentes reutilizables
-│   └── Navbar.jsx      # Barra de navegación principal
-├── pages/              # Páginas principales de la aplicación
-│   ├── Home.jsx        # Página de inicio
-│   ├── Products.jsx    # Catálogo de productos
-│   ├── ProductDetail.jsx # Detalle de producto individual
-│   ├── Contact.jsx     # Formulario de contacto
-│   └── CreateProduct.jsx # Formulario de creación de productos
-├── services/           # Servicios para comunicación con API
-│   └── productService.js # Cliente para operaciones de productos
-├── App.jsx            # Componente principal con rutas
-├── main.jsx           # Punto de entrada de la aplicación
-└── index.css          # Estilos globales
-```
-
-## Instalación y Configuración
-
-### Prerrequisitos
-- Node.js (versión 16 o superior)
-- npm (viene incluido con Node.js)
-
-### Pasos de Instalación
-
-1. **Instalar dependencias:**
-   ```bash
-   npm install
-   ```
-
-2. **Configurar variables de entorno:**
-   - La aplicación está configurada para conectarse al backend en `http://localhost:5000`
-   - Asegúrate de que tu API backend esté ejecutándose en el puerto 5000
-
-3. **Ejecutar en modo desarrollo:**
-   ```bash
-   npm run dev
-   ```
-   La aplicación estará disponible en `http://localhost:3000`
-
-4. **Compilar para producción:**
-   ```bash
-   npm run build
-   ```
-
-## Funcionalidades Detalladas
-
-### 📋 Catálogo de Productos (`/productos`)
-- Lista todos los productos disponibles
-- Muestra información básica: nombre, descripción, precio y stock
-- Imágenes de productos (si están disponibles)
-- Enlaces a páginas de detalle individuales
-- Manejo de estados de carga y error
-- Botón para agregar nuevos productos
-
-### 🔍 Detalle de Producto (`/productos/:id`)
-- Vista completa de un producto específico
-- Información detallada del producto
-- **Funcionalidad de eliminación** con confirmación
-- Navegación de regreso al catálogo
-- Manejo de productos no encontrados
-
-### ➕ Crear Producto (`/admin/crear-producto`)
-- Formulario controlado con validación
-- Campos obligatorios y opcionales
-- Vista previa de imágenes
-- Validaciones en tiempo real
-- Redirección automática tras creación exitosa
-
-### 📞 Contacto (`/contacto`)
-- Formulario de contacto completo
-- Validación de campos obligatorios
-- Confirmación visual de envío
-- Información de contacto adicional
-
-## Configuración de la API
-
-El frontend está configurado para comunicarse con un backend que debe proporcionar los siguientes endpoints:
-
-```
-GET    /api/productos      # Obtener todos los productos
-GET    /api/productos/:id  # Obtener producto por ID
-POST   /api/productos      # Crear nuevo producto
-PUT    /api/productos/:id  # Actualizar producto
-DELETE /api/productos/:id  # Eliminar producto
-```
-
-## Scripts Disponibles
-
-- `npm run dev` - Ejecuta la aplicación en modo desarrollo
-- `npm run build` - Construye la aplicación para producción
-- `npm run preview` - Vista previa de la construcción de producción
-- `npm run lint` - Ejecuta el linter para verificar calidad de código
-
-## Consideraciones de Desarrollo
-
-### Gestión de Estados
-- Uso de hooks `useState` y `useEffect` para manejo local de estado
-- Estados separados para loading, error y data en cada componente
-
-### Navegación
-- Implementación completa de React Router DOM v6
-- Uso de `useParams` para parámetros dinámicos
-- `useNavigate` para redirecciones programáticas
-
-### Manejo de Errores
-- Try-catch blocks en todas las llamadas a la API
-- Estados de error visuales para el usuario
-- Fallbacks para imágenes no disponibles
-
-### Experiencia de Usuario
-- Estados de carga durante operaciones asíncronas
-- Confirmaciones para acciones destructivas
-- Navegación intuitiva entre páginas
+├── backend/
+│   ├── package.json
+│   ├── .env
+│   └── src/
+│       ├── app.js
+│       ├── seed.js
+│       ├── controllers/
+│       │   └── productos.controller.js
+│       ├── models/
+│       │   └── Product.js
+│       └── routes/
+│           └── productos.routes.js
+├── client/
+│   ├── package.json
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   ├── index.css
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── ModernLayout.jsx
+│   │   │   └── Navbar.jsx
+│   │   ├── contexts/
+│   │   │   └── CartContext.jsx
+│   │   ├── data/
+│   │   │   └── mockProducts.js
+│   │   ├── pages/
+│   │   │   ├── Cart.jsx
+│   │   │   ├── Contact.jsx
+│   │   │   ├── Home.jsx
+│   │   │   ├── ProductDetail.jsx
+│   │   │   └── Products.jsx
+│   │   └── services/
+│   │       └── productService.js
+├── public/
+│   └── images/
+├── index.html
+├── package.json
+├── vite.config.js
 
 
-- Verifica que el servidor API esté ejecutándose en el puerto correcto
-- Asegúrate de que las dependencias estén instaladas correctamente
 
----
+
