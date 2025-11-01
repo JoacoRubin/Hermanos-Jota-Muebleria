@@ -5,7 +5,6 @@ Joaquin Rubinstein
 Andres Suarez
 Gonzalo Ruiz
 Guillermo Villalba
-Ezequiel Salvatierra
 
 ---
 
