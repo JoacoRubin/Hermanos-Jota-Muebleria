@@ -1,9 +1,62 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useCart } from '../contexts/CartContext'
+import { useAuth } from '../contexts/AuthContext'
+import OrderService from '../services/orderService'
 import ModernLayout from '../components/ModernLayout'
 
 function Cart() {
   const { cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice } = useCart()
+  const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [direccionEnvio, setDireccionEnvio] = useState('')
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false)
+
+  const handleCheckout = async () => {
+    if (!isAuthenticated) {
+      alert('Debes iniciar sesión para finalizar la compra')
+      navigate('/login')
+      return
+    }
+
+    setShowCheckoutForm(true)
+  }
+
+  const handleConfirmOrder = async () => {
+    if (!direccionEnvio.trim()) {
+      alert('Por favor ingresa una dirección de envío')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const items = cartItems.map(item => ({
+        producto: item._id,
+        nombre: item.nombre,
+        precio: item.precio,
+        cantidad: item.quantity
+      }))
+
+      const orderData = {
+        items,
+        direccionEnvio: direccionEnvio.trim()
+      }
+
+      const response = await OrderService.createOrder(orderData)
+      
+      clearCart()
+      alert(`¡Pedido realizado con éxito! Número de pedido: ${response.pedido._id}`)
+      setDireccionEnvio('')
+      setShowCheckoutForm(false)
+      navigate('/mis-pedidos')
+    } catch (error) {
+      console.error('Error al crear el pedido:', error)
+      alert(error.message || 'Error al procesar el pedido')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -143,14 +196,67 @@ function Cart() {
             <Link to="/productos" className="btn" style={{ backgroundColor: 'var(--texto-secundario)' }}>
               Seguir Comprando
             </Link>
-            <button 
-              className="explore-button"
-              style={{ border: 'none', cursor: 'pointer' }}
-              onClick={() => alert('Funcionalidad de compra en desarrollo')}
-            >
-              Finalizar Compra
-            </button>
+            
+            {!showCheckoutForm ? (
+              <button 
+                className="explore-button"
+                style={{ border: 'none', cursor: 'pointer' }}
+                onClick={handleCheckout}
+              >
+                Finalizar Compra
+              </button>
+            ) : null}
           </div>
+
+          {showCheckoutForm && (
+            <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: 'white', borderRadius: '8px' }}>
+              <h3 style={{ marginBottom: '1rem', color: 'var(--siena-tostado)' }}>Información de Envío</h3>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                  Dirección de Envío *
+                </label>
+                <textarea
+                  value={direccionEnvio}
+                  onChange={(e) => setDireccionEnvio(e.target.value)}
+                  placeholder="Ingresa tu dirección completa..."
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid rgba(160, 82, 45, 0.3)',
+                    borderRadius: '8px',
+                    fontFamily: 'inherit',
+                    fontSize: '1rem',
+                    resize: 'vertical'
+                  }}
+                  disabled={loading}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowCheckoutForm(false)
+                    setDireccionEnvio('')
+                  }}
+                  className="btn"
+                  style={{ backgroundColor: 'var(--texto-secundario)' }}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmOrder}
+                  className="explore-button"
+                  style={{ border: 'none', cursor: 'pointer' }}
+                  disabled={loading}
+                >
+                  {loading ? 'Procesando...' : 'Confirmar Pedido'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </ModernLayout>

@@ -1,6 +1,6 @@
 import { mockProducts } from '../data/mockProducts.js';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 class ProductService {
   // Obtener todos los productos
@@ -62,6 +62,49 @@ class ProductService {
       return await response.json();
     } catch (error) {
       console.error('Error updating product:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar un producto
+  static async deleteProduct(id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/productos/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al eliminar el producto');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
+  }
+
+  // Crear un nuevo producto
+  static async createProduct(productData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/productos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Error al crear el producto');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating product:', error);
       throw error;
     }
   }
