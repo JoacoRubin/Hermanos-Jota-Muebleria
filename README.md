@@ -22,15 +22,6 @@ Guillermo Villalba
 - 🗄️ **MongoDB Atlas**: Base de datos en la nube
 - 🌐 **Desplegable**: Configurado para producción en Render/Netlify
 
-### ✨ Funcionalidades Anteriores (Sprint 5 y 6)
-- 📱 **Catálogo de Productos**: Visualización interactiva de muebles con imágenes
-- 🔍 **Vista de Detalles**: Información completa de cada producto
-- 📞 **Formulario de Contacto**: Sistema de contacto con validación
-- 🧭 **Navegación SPA**: Navegación fluida entre secciones sin recarga
-- 📝 **CRUD Completo**: Crear, editar y eliminar productos
-
----
-
 ## 🚀 Instalación y Ejecución Local
 
 ### 1️⃣ Clonar el Repositorio
@@ -183,10 +174,11 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm s
 - **API Auth**: http://localhost:5000/api/auth
 - **API Orders**: http://localhost:5000/api/orders
 
-### 🌐 Producción (después del despliegue)
-- **Frontend**: Tu URL de Netlify/Vercel
-- **Backend**: Tu URL de Render
-- **MongoDB**: MongoDB Atlas (ya configurado)
+### 🌐 Producción
+- **Frontend**: https://vermillion-gnome-5f2469.netlify.app
+- **Backend API**: https://hermanos-jota-muebleria-1.onrender.com
+- **API Productos**: https://hermanos-jota-muebleria-1.onrender.com/api/productos
+- **MongoDB**: MongoDB Atlas (configurado y funcionando)
 
 ---
 
