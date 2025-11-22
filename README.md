@@ -121,50 +121,6 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm s
 
 ---
 
-## 🌐 Despliegue en Producción
-
-### Backend en Render
-
-1. **Crear cuenta en [Render.com](https://render.com)**
-2. **Crear nuevo Web Service**:
-   - Conecta tu repositorio de GitHub
-   - Root Directory: `backend`
-   - Build Command: `npm install`
-   - Start Command: `npm start`
-3. **Configurar variables de entorno**:
-   ```
-   MONGO_URI=tu_cadena_mongodb_atlas
-   JWT_SECRET=hermanos-jota-secret-key-2024-jwt-super-secure
-   PORT=5000
-   ```
-4. **Deploy** - Render generará una URL como: `https://hermanos-jota-backend.onrender.com`
-
-### Frontend en Netlify
-
-1. **Crear cuenta en [Netlify.com](https://netlify.com)**
-2. **Conectar repositorio de GitHub**
-3. **Configurar build**:
-   - Base directory: `client`
-   - Build command: `npm run build`
-   - Publish directory: `client/dist`
-4. **Agregar variable de entorno**:
-   ```
-   VITE_API_URL=https://hermanos-jota-backend.onrender.com
-   ```
-5. **Deploy** - Netlify generará una URL como: `https://hermanos-jota.netlify.app`
-
-### Alternativa: Frontend en Vercel
-
-1. **Crear cuenta en [Vercel.com](https://vercel.com)**
-2. **Importar proyecto de GitHub**
-3. **Configurar**:
-   - Framework Preset: Vite
-   - Root Directory: `client`
-   - Variable de entorno: `VITE_API_URL=https://hermanos-jota-backend.onrender.com`
-4. **Deploy**
-
----
-
 ## 🚀 URLs de la Aplicación
 
 ### 🖥️ Desarrollo Local
