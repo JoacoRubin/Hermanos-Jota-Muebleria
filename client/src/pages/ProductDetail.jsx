@@ -3,11 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import ProductService from '../services/productService'
 import ModernLayout from '../components/ModernLayout'
 import { useCart } from '../contexts/CartContext'
+import { useAuth } from '../contexts/AuthContext'
 
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { addToCart } = useCart()
+  const { user } = useAuth()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -205,20 +207,23 @@ function ProductDetail() {
               Ver Carrito
             </Link>
 
-            <button 
-              onClick={handleDelete}
-              className="btn"
-              style={{ 
-                backgroundColor: '#c33',
-                color: 'white',
-                padding: '0.6rem 1rem',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.9rem'
-              }}
-            >
-              🗑️ Eliminar Producto
-            </button>
+            {/* Solo mostrar botón eliminar si el usuario es administrador */}
+            {user?.rol === 'admin' && (
+              <button 
+                onClick={handleDelete}
+                className="btn"
+                style={{ 
+                  backgroundColor: '#c33',
+                  color: 'white',
+                  padding: '0.6rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                🗑️ Eliminar Producto
+              </button>
+            )}
           </div>
         </div>
       </div>
