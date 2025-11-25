@@ -62,8 +62,8 @@ function Contact() {
   return (
     <ModernLayout>
       <div className="content-card">
-        <h1>Contacto</h1>
-        <p style={{ textAlign: 'center', margin: '2rem 0' }}>
+        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Contacto</h1>
+        <p style={{ textAlign: 'center', margin: '2rem 0', fontSize: '1.2rem', lineHeight: '1.8' }}>
           ¿Tienes alguna pregunta o comentario? ¡Nos encantaría saber de ti!
         </p>
       
@@ -116,16 +116,16 @@ function Contact() {
 
       <div style={{ 
         marginTop: '3rem', 
-        padding: '2rem',
+        padding: '2.5rem',
         backgroundColor: 'rgba(160, 82, 45, 0.1)',
-        borderRadius: '8px',
+        borderRadius: '12px',
         textAlign: 'center',
         border: '1px solid rgba(160, 82, 45, 0.2)'
       }}>
-        <h3>Información de Contacto</h3>
-        <p>📧 Email: info@hermanosjota.com.ar</p>
-        <p>📞 Teléfono: +54 (11) 4567-8900</p>
-        <p>📍 Dirección: Av. San Juan 2847, CABA, Argentina</p>
+        <h3 style={{ fontSize: '1.8rem', marginBottom: '1.5rem', color: 'var(--siena-tostado)' }}>Información de Contacto</h3>
+        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📧 Email: info@hermanosjota.com.ar</p>
+        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📞 Teléfono: +54 (11) 4567-8900</p>
+        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📍 Dirección: Av. San Juan 2847, CABA, Argentina</p>
       </div>
       </div>
     </ModernLayout>
