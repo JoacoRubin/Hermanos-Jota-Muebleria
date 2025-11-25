@@ -10,10 +10,15 @@ build/
 
 # Environment variables
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+
+# Netlify configuration
+netlify.toml
 
 # IDE/Editor
 .vscode/
