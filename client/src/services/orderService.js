@@ -1,3 +1,5 @@
+import { fetchWithRetry } from '../utils/fetchWithTimeout.js';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 const API_URL = `${API_BASE}/api/orders`
 
@@ -9,19 +11,14 @@ class OrderService {
       throw new Error('No hay token de autenticación')
     }
 
-    const response = await fetch(API_URL, {
+    const response = await fetchWithRetry(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(orderData)
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.mensaje || 'Error al crear el pedido')
-    }
+    }, 1)
 
     return response.json()
   }
@@ -33,16 +30,12 @@ class OrderService {
       throw new Error('No hay token de autenticación')
     }
 
-    const response = await fetch(`${API_URL}/mis-pedidos`, {
+    const response = await fetchWithRetry(`${API_URL}/mis-pedidos`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
       }
-    })
-
-    if (!response.ok) {
-      throw new Error('Error al obtener los pedidos')
-    }
+    }, 1)
 
     return response.json()
   }

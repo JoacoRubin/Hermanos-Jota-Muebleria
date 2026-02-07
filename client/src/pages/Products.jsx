@@ -9,6 +9,7 @@ function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [loadingMessage, setLoadingMessage] = useState('Conectando al servidor...')
 
   useEffect(() => {
     loadProducts()
@@ -18,11 +19,38 @@ function Products() {
     try {
       setLoading(true)
       setError(null)
+      setLoadingMessage('Conectando al servidor...')
+      
+      console.log('=== INICIANDO CARGA DE PRODUCTOS ===')
+      
+      // Actualizar mensaje después de 10 segundos
+      const timeoutId1 = setTimeout(() => {
+        setLoadingMessage('El servidor está iniciando (Render cold start), esto puede tomar hasta 90 segundos...')
+      }, 10000)
+      
+      // Actualizar mensaje después de 40 segundos
+      const timeoutId2 = setTimeout(() => {
+        setLoadingMessage('Aún cargando... El servidor gratuito de Render puede tardar. Por favor espera...')
+      }, 40000)
+      
       const data = await ProductService.getAllProducts()
+      
+      clearTimeout(timeoutId1)
+      clearTimeout(timeoutId2)
+      
+      console.log('=== PRODUCTOS CARGADOS EXITOSAMENTE ===', data.length, 'productos')
       setProducts(data)
     } catch (err) {
-      setError('Error al cargar los productos. Asegúrate de que el servidor esté ejecutándose.')
-      console.error('Error loading products:', err)
+      console.error('=== ERROR AL CARGAR PRODUCTOS ===', err)
+      const errorMessage = err.message || 'Error desconocido'
+      
+      if (errorMessage.includes('Timeout') || errorMessage.includes('timeout')) {
+        setError('El servidor tardó demasiado en responder. Esto puede ocurrir en el plan gratuito de Render. Por favor, intenta nuevamente en unos segundos.')
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        setError('No se pudo conectar al servidor. Verifica tu conexión a internet o que la URL del backend sea correcta.')
+      } else {
+        setError(`Error al cargar los productos: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -32,7 +60,15 @@ function Products() {
     return (
       <ModernLayout>
         <div className="content-card">
-          <div className="loading">Cargando productos...</div>
+          <div className="loading">
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+            <div>{loadingMessage}</div>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '1rem' }}>
+              {loadingMessage.includes('60 segundos') && (
+                <p>En Render con plan gratuito, el primer acceso puede tardar. Próximas visitas serán más rápidas.</p>
+              )}
+            </div>
+          </div>
         </div>
       </ModernLayout>
     )

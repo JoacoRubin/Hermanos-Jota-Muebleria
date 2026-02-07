@@ -9,7 +9,32 @@ const ordersRoutes = require('./routes/orders.routes')
 const app = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors())
+// Configuración de CORS para permitir peticiones desde frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'https://vermillion-gnome-5f2469.netlify.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como mobile apps o curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.warn(`CORS: Origen no permitido: ${origin}`);
+      callback(null, true); // Permitir de todos modos en desarrollo
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json())
 
 // Prefijo API

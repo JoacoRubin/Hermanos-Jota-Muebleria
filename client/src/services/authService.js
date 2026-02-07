@@ -1,22 +1,20 @@
+import { fetchWithRetry } from '../utils/fetchWithTimeout.js';
+
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`;
 
 class AuthService {
   // Registrar nuevo usuario
   static async register(userData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData),
-      });
+      }, 1);
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al registrar usuario');
-      }
 
       // Guardar token en localStorage
       if (data.token) {
@@ -34,19 +32,15 @@ class AuthService {
   // Login de usuario
   static async login(credentials) {
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(credentials),
-      });
+      }, 1);
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al iniciar sesión');
-      }
 
       // Guardar token en localStorage
       if (data.token) {
@@ -100,19 +94,15 @@ class AuthService {
         throw new Error('No hay token de autenticación');
       }
 
-      const response = await fetch(`${API_BASE_URL}/profile`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/profile`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-      });
+      }, 1);
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al obtener perfil');
-      }
 
       // Actualizar usuario en localStorage
       if (data.user) {

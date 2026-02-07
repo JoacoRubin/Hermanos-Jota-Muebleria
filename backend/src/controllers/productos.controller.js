@@ -5,10 +5,18 @@ exports.getAll = async (req, res, next) => {
     console.log('[GET /api/productos] Iniciando consulta...')
     const startTime = Date.now()
     
-    const products = await Product.find().lean().maxTimeMS(10000) // Timeout de 10 segundos
+    const products = await Product.find()
+      .lean()
+      .maxTimeMS(10000) // Timeout de 10 segundos
+      .select('-__v') // Excluir campo de versión para reducir payload
     
     const queryTime = Date.now() - startTime
     console.log(`[GET /api/productos] Completado en ${queryTime}ms - ${products.length} productos encontrados`)
+    
+    // Cache por 5 minutos en producción
+    if (process.env.NODE_ENV === 'production') {
+      res.set('Cache-Control', 'public, max-age=300')
+    }
     
     res.json(products)
   } catch (err) {
