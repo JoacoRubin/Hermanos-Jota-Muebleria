@@ -41,7 +41,17 @@ app.use((err, req, res, next) => {
   })
 })
 
-// Conexión a MongoDB
+// Health check endpoint para mantener el servicio activo
+app.get('/health', (req, res) => {
+  const status = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  }
+  res.json(status)
+})
+
+// Conexión a MongoDB con configuración optimizada
 async function start() {
   const mongoUri = process.env.MONGO_URI
   if (!mongoUri) {
@@ -51,16 +61,51 @@ async function start() {
   }
 
   try {
+    console.log('Iniciando conexión a MongoDB...')
+    const startTime = Date.now()
+    
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      // Timeouts optimizados
+      serverSelectionTimeoutMS: 5000, // 5 segundos para seleccionar servidor
+      socketTimeoutMS: 45000, // 45 segundos para operaciones de socket
+      
+      // Pool de conexiones
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      
+      // Heartbeat para mantener conexión
+      heartbeatFrequencyMS: 10000,
+      
+      // Retry
+      retryWrites: true,
+      retryReads: true
     })
-    console.log('Conectado a MongoDB')
-    app.listen(PORT, () => console.log(`Servidor iniciado en puerto ${PORT}`))
+    
+    const connectionTime = Date.now() - startTime
+    console.log(`✓ Conectado a MongoDB en ${connectionTime}ms`)
+    
+    app.listen(PORT, () => {
+      console.log(`✓ Servidor iniciado en puerto ${PORT}`)
+      console.log(`✓ Health check disponible en: http://localhost:${PORT}/health`)
+    })
   } catch (err) {
-    console.error('Error conectando a MongoDB:', err.message)
+    console.error('✗ Error conectando a MongoDB:', err.message)
+    console.error('Detalles:', err)
     process.exit(1)
   }
 }
+
+// Manejo de eventos de conexión
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠ MongoDB desconectado')
+})
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✓ MongoDB reconectado')
+})
+
+mongoose.connection.on('error', (err) => {
+  console.error('✗ Error en conexión MongoDB:', err.message)
+})
 
 start()

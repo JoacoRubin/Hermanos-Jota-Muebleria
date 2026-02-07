@@ -9,4 +9,10 @@ const ProductSchema = new mongoose.Schema({
   detalles: { type: Object, default: {} }
 }, { timestamps: true })
 
+// Índices para mejorar el rendimiento de consultas
+ProductSchema.index({ nombre: 1 })
+ProductSchema.index({ precio: 1 })
+ProductSchema.index({ stock: 1 })
+ProductSchema.index({ createdAt: -1 })
+
 module.exports = mongoose.model('Product', ProductSchema)

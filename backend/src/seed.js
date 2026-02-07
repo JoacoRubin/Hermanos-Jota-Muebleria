@@ -7,8 +7,8 @@ const mockProducts = require('../../client/src/data/mockProducts').default;
 async function seed() {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000
     });
     console.log('Conectado a MongoDB');
 

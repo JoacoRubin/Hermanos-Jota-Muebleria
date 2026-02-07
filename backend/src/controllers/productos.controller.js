@@ -2,9 +2,17 @@ const Product = require('../models/Product')
 
 exports.getAll = async (req, res, next) => {
   try {
-    const products = await Product.find().lean()
+    console.log('[GET /api/productos] Iniciando consulta...')
+    const startTime = Date.now()
+    
+    const products = await Product.find().lean().maxTimeMS(10000) // Timeout de 10 segundos
+    
+    const queryTime = Date.now() - startTime
+    console.log(`[GET /api/productos] Completado en ${queryTime}ms - ${products.length} productos encontrados`)
+    
     res.json(products)
   } catch (err) {
+    console.error('[GET /api/productos] Error:', err.message)
     next(err)
   }
 }

@@ -1,0 +1,33 @@
+name: Keep Render Service Alive
+
+on:
+  schedule:
+    # Ejecuta cada 14 minutos (Render duerme después de 15 min de inactividad)
+    - cron: '*/14 * * * *'
+  # Permite ejecutar manualmente desde GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Check
+        run: |
+          # Reemplaza con tu URL de Render
+          RENDER_URL="${{ secrets.RENDER_URL || 'https://tu-app.onrender.com' }}"
+          
+          echo "🏓 Haciendo ping a: $RENDER_URL/health"
+          
+          # Hacer petición al health check
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_URL/health" || echo "000")
+          
+          echo "📡 Código de respuesta: $RESPONSE"
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Servicio activo"
+          else
+            echo "⚠️ Servicio no respondió correctamente (puede estar iniciando)"
+          fi
+          
+          # No fallar el workflow si el servicio está iniciando
+          exit 0
