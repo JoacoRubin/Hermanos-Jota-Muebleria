@@ -3,9 +3,10 @@ name: Keep Render Service Alive
 on:
   schedule:
     # Render duerme el servicio tras 15 min de inactividad.
-    # Cada 14 minutos serían ~3.100 ejecuciones al mes; en horario de uso
-    # (09–23 ART = 12–02 UTC) alcanza y baja el consumo a menos de la mitad.
-    - cron: '*/14 12-23,0-2 * * *'
+    # Corre las 24hs: los repos públicos tienen minutos de GitHub Actions
+    # ilimitados y gratis, así que restringir el horario no ahorraba nada
+    # y solo dificultaba diagnosticar si el ping estaba funcionando.
+    - cron: '*/14 * * * *'
   workflow_dispatch:
 
 jobs:
