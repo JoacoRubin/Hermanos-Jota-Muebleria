@@ -1,11 +1,5 @@
 # 🪑 Mueblería Hermanos Jota - E-commerce Full Stack
 
-## 👥 Integrantes del Proyecto
-Joaquin Rubinstein
-Andres Suarez
-Gonzalo Ruiz
-Guillermo Villalba
-
 ---
 
 ## 📋 Descripción del Proyecto
