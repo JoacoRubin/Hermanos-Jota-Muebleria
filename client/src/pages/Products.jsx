@@ -1,170 +1,151 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
 import ProductService from '../services/productService'
 import ModernLayout from '../components/ModernLayout'
+import ProductCard from '../components/products/ProductCard'
 import { useCart } from '../contexts/CartContext'
+import { useUI } from '../contexts/UIContext'
+import { CATEGORIAS } from '../constants'
 
 function Products() {
   const { addToCart } = useCart()
-  const [products, setProducts] = useState([])
+  const { toast } = useUI()
+
+  const [productos, setProductos] = useState([])
+  const [meta, setMeta] = useState(null)
+  const [pagina, setPagina] = useState(1)
+  const [categoria, setCategoria] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [loadingMessage, setLoadingMessage] = useState('Conectando al servidor...')
 
-  useEffect(() => {
-    loadProducts()
-  }, [])
+  const cargarProductos = useCallback(async () => {
+    setLoading(true)
+    setError(null)
 
-  const loadProducts = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      setLoadingMessage('Conectando al servidor...')
-      
-      console.log('=== INICIANDO CARGA DE PRODUCTOS ===')
-      
-      // Actualizar mensaje después de 10 segundos
-      const timeoutId1 = setTimeout(() => {
-        setLoadingMessage('El servidor está iniciando (Render cold start), esto puede tomar hasta 90 segundos...')
-      }, 10000)
-      
-      // Actualizar mensaje después de 40 segundos
-      const timeoutId2 = setTimeout(() => {
-        setLoadingMessage('Aún cargando... El servidor gratuito de Render puede tardar. Por favor espera...')
-      }, 40000)
-      
-      const data = await ProductService.getAllProducts()
-      
-      clearTimeout(timeoutId1)
-      clearTimeout(timeoutId2)
-      
-      console.log('=== PRODUCTOS CARGADOS EXITOSAMENTE ===', data.length, 'productos')
-      setProducts(data)
+      const respuesta = await ProductService.getAll({
+        page: pagina,
+        limit: 12,
+        categoria: categoria || undefined,
+      })
+
+      setProductos(respuesta.productos)
+      setMeta(respuesta.meta)
     } catch (err) {
-      console.error('=== ERROR AL CARGAR PRODUCTOS ===', err)
-      const errorMessage = err.message || 'Error desconocido'
-      
-      if (errorMessage.includes('Timeout') || errorMessage.includes('timeout')) {
-        setError('El servidor tardó demasiado en responder. Esto puede ocurrir en el plan gratuito de Render. Por favor, intenta nuevamente en unos segundos.')
-      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-        setError('No se pudo conectar al servidor. Verifica tu conexión a internet o que la URL del backend sea correcta.')
-      } else {
-        setError(`Error al cargar los productos: ${errorMessage}`)
-      }
+      // Se muestra el error real. Antes cualquier fallo caía en un fallback
+      // silencioso a datos de ejemplo y el usuario nunca se enteraba de que
+      // el backend estaba caído… hasta que fallaba el checkout.
+      setError(err.detalle || err.message)
     } finally {
       setLoading(false)
     }
+  }, [pagina, categoria])
+
+  useEffect(() => {
+    cargarProductos()
+  }, [cargarProductos])
+
+  const handleAgregar = (producto) => {
+    addToCart(producto)
+    toast.success(`${producto.nombre} agregado al carrito`)
   }
 
-  if (loading) {
-    return (
-      <ModernLayout>
-        <div className="content-card">
-          <div className="loading">
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
-            <div>{loadingMessage}</div>
-            <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '1rem' }}>
-              {loadingMessage.includes('60 segundos') && (
-                <p>En Render con plan gratuito, el primer acceso puede tardar. Próximas visitas serán más rápidas.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </ModernLayout>
-    )
-  }
-
-  if (error) {
-    return (
-      <ModernLayout>
-        <div className="content-card">
-          <div className="error">
-            <h2>Error</h2>
-            <p>{error}</p>
-            <button onClick={loadProducts} className="btn">
-              Reintentar
-            </button>
-          </div>
-        </div>
-      </ModernLayout>
-    )
+  const handleCambiarCategoria = (evento) => {
+    setCategoria(evento.target.value)
+    setPagina(1)
   }
 
   return (
-    <ModernLayout>
+    <ModernLayout title="Catálogo">
       <div className="content-card">
-        <h1>Nuestros Muebles Artesanales</h1>
-        
-        {products.length === 0 ? (
-          <div style={{ textAlign: 'center', margin: '3rem 0' }}>
-            <p>Nuestro catálogo artesanal está siendo preparado con el cuidado que cada pieza merece.</p>
-            <p>¡Pronto tendremos increíbles muebles para ti!</p>
+        <div className="catalogo-header">
+          <h1>Nuestros muebles artesanales</h1>
+
+          <div className="form-group form-group--inline">
+            <label htmlFor="filtro-categoria">Categoría</label>
+            <select
+              id="filtro-categoria"
+              value={categoria}
+              onChange={handleCambiarCategoria}
+            >
+              <option value="">Todas</option>
+              {CATEGORIAS.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : (
-        <>
-          <div className="products-grid">
-            {products.map((product) => (
-              <div key={product._id} className="product-card">
-                {product.imagenUrl && (
-                  <Link to={`/productos/${product._id}`} className="product-image-link">
-                    <img 
-                      src={product.imagenUrl} 
-                      alt={product.nombre}
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
-                      className="product-image-clickable"
-                    />
-                  </Link>
-                )}
-                <Link to={`/productos/${product._id}`} style={{ textDecoration: 'none' }}>
-                  <h3 style={{ cursor: 'pointer' }} className="product-title-clickable">{product.nombre}</h3>
-                </Link>
-                <p style={{ 
-                  fontSize: '0.9rem', 
-                  lineHeight: '1.4',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden'
-                }}>
-                  {product.descripcion}
-                </p>
-                <p className="price">${product.precio?.toLocaleString('es-AR')}</p>
-                <p style={{ fontSize: '0.9rem', color: product.stock > 0 ? 'var(--verde-salvia)' : 'var(--rosa-polvoriento)' }}>
-                  {product.stock > 0 ? `Stock: ${product.stock} ${product.stock === 1 ? 'pieza' : 'piezas'}` : 'Sin stock'}
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button 
-                    onClick={() => {
-                      if (product.stock > 0) {
-                        addToCart(product)
-                        alert(`${product.nombre} agregado al carrito`)
-                      } else {
-                        alert('Producto sin stock')
-                      }
-                    }}
-                    className="btn"
-                    disabled={product.stock === 0}
-                    style={{ 
-                      backgroundColor: product.stock > 0 ? 'var(--verde-salvia)' : 'var(--texto-secundario)',
-                      opacity: product.stock === 0 ? 0.5 : 1,
-                      cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
-                      fontSize: '0.8rem',
-                      padding: '0.4rem 0.8rem'
-                    }}
-                  >
-                    🛒 Agregar
-                  </button>
-                  <Link to={`/productos/${product._id}`} className="btn" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                    Ver Detalles
-                  </Link>
-                </div>
-              </div>
-            ))}
+        </div>
+
+        {loading && (
+          <div className="loading" role="status">
+            <p>Cargando productos…</p>
+            <p className="loading__nota">
+              Si es la primera visita del día, el servidor puede tardar unos
+              segundos en despertarse.
+            </p>
           </div>
-        </>
-      )}
+        )}
+
+        {error && !loading && (
+          <div className="estado-vacio">
+            <h2>No pudimos cargar el catálogo</h2>
+            <p className="error-message" role="alert">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={cargarProductos}
+              className="explore-button"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && productos.length === 0 && (
+          <div className="estado-vacio">
+            <p>No hay productos que coincidan con ese filtro.</p>
+          </div>
+        )}
+
+        {!loading && !error && productos.length > 0 && (
+          <>
+            <div className="products-grid">
+              {productos.map((producto) => (
+                <ProductCard
+                  key={producto.id}
+                  producto={producto}
+                  onAgregar={handleAgregar}
+                />
+              ))}
+            </div>
+
+            {meta && meta.totalPages > 1 && (
+              <nav className="paginacion" aria-label="Paginación del catálogo">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPagina((p) => p - 1)}
+                  disabled={!meta.hasPrevPage}
+                >
+                  ← Anterior
+                </button>
+                <span aria-live="polite">
+                  Página {meta.page} de {meta.totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPagina((p) => p + 1)}
+                  disabled={!meta.hasNextPage}
+                >
+                  Siguiente →
+                </button>
+              </nav>
+            )}
+          </>
+        )}
       </div>
     </ModernLayout>
   )

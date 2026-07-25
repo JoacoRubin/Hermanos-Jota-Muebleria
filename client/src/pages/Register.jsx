@@ -1,79 +1,82 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useUI } from '../contexts/UIContext'
 import ModernLayout from '../components/ModernLayout'
+
+const MIN_PASSWORD = 8
 
 function Register() {
   const navigate = useNavigate()
   const { register } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  
+  const { toast } = useUI()
+
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    // Limpiar error cuando el usuario empieza a escribir
+  const handleChange = (evento) => {
+    const { name, value } = evento.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
     if (error) setError(null)
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (evento) => {
+    evento.preventDefault()
     setError(null)
 
-    // Validaciones
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden')
       return
     }
 
-    if (formData.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres')
+    // Mismo criterio que aplica la API. La validación real es la del
+    // servidor; esta solo ahorra un viaje de ida y vuelta.
+    if (formData.password.length < MIN_PASSWORD) {
+      setError(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`)
+      return
+    }
+
+    if (!/[a-zA-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+      setError('La contraseña debe incluir al menos una letra y un número')
       return
     }
 
     setLoading(true)
 
     try {
-      const { confirmPassword, ...userData } = formData
-      await register(userData)
-      alert('¡Registro exitoso! Bienvenido a Hermanos Jota')
+      const { confirmPassword: _descartado, ...userData } = formData
+      const usuario = await register(userData)
+      toast.success(`¡Bienvenido a Hermanos Jota, ${usuario.nombre.split(' ')[0]}!`)
       navigate('/')
     } catch (err) {
-      setError(err.message || 'Error al registrar usuario')
-      console.error('Error en registro:', err)
+      setError(err.detalle || err.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <ModernLayout title="Registro de Usuario">
+    <ModernLayout title="Crear cuenta">
       <div className="auth-container">
         <div className="auth-card">
-          <h2 className="auth-title">Crear Cuenta</h2>
-          <p className="auth-subtitle">
-            Únete a la familia Hermanos Jota
-          </p>
-          
+          <h1 className="auth-title">Crear cuenta</h1>
+          <p className="auth-subtitle">Unite a la familia Hermanos Jota</p>
+
           {error && (
-            <div className="error-message">
+            <div className="error-message" role="alert">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
-              <label htmlFor="nombre">Nombre Completo *</label>
+              <label htmlFor="nombre">Nombre completo *</label>
               <input
                 type="text"
                 id="nombre"
@@ -81,6 +84,8 @@ function Register() {
                 value={formData.nombre}
                 onChange={handleChange}
                 required
+                minLength={2}
+                maxLength={80}
                 placeholder="Juan Pérez"
                 autoComplete="name"
               />
@@ -109,14 +114,19 @@ function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                minLength="6"
-                placeholder="Mínimo 6 caracteres"
+                minLength={MIN_PASSWORD}
+                placeholder={`Mínimo ${MIN_PASSWORD} caracteres, con letras y números`}
                 autoComplete="new-password"
+                aria-describedby="password-ayuda"
               />
+              <p id="password-ayuda" className="form-hint">
+                Al menos {MIN_PASSWORD} caracteres, incluyendo una letra y un
+                número.
+              </p>
             </div>
 
             <div className="form-group">
-              <label htmlFor="confirmPassword">Confirmar Contraseña *</label>
+              <label htmlFor="confirmPassword">Confirmar contraseña *</label>
               <input
                 type="password"
                 id="confirmPassword"
@@ -124,26 +134,26 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                minLength="6"
-                placeholder="Repite tu contraseña"
+                minLength={MIN_PASSWORD}
+                placeholder="Repetí tu contraseña"
                 autoComplete="new-password"
               />
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-full-width"
               disabled={loading}
             >
-              {loading ? 'Registrando...' : 'Crear Cuenta'}
+              {loading ? 'Creando cuenta…' : 'Crear cuenta'}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              ¿Ya tienes cuenta?{' '}
+              ¿Ya tenés cuenta?{' '}
               <Link to="/login" className="auth-link">
-                Inicia sesión aquí
+                Iniciá sesión acá
               </Link>
             </p>
           </div>

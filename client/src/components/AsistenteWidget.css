@@ -1,0 +1,160 @@
+/* Asistente (chatbot RAG). Usa la paleta "Madera Natural" de index.css. */
+
+.asistente-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--siena-tostado);
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(160, 82, 45, 0.35);
+  z-index: 1000;
+  transition: transform 0.2s ease;
+}
+
+.asistente-fab:hover {
+  transform: scale(1.08);
+}
+
+.asistente-panel {
+  position: fixed;
+  bottom: 88px;
+  right: 20px;
+  width: min(370px, calc(100vw - 40px));
+  height: min(520px, calc(100vh - 120px));
+  background: var(--fondo-tarjeta);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(160, 82, 45, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.asistente-header {
+  background: var(--siena-tostado);
+  color: white;
+  padding: 0.8rem 1rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.asistente-cerrar {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.asistente-mensajes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--alabastro-calido);
+}
+
+.asistente-msg {
+  max-width: 85%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.asistente-msg.bot {
+  background: var(--fondo-tarjeta);
+  color: var(--texto-principal);
+  align-self: flex-start;
+  border: 1px solid rgba(160, 82, 45, 0.1);
+}
+
+.asistente-msg.user {
+  background: var(--verde-salvia);
+  color: white;
+  align-self: flex-end;
+}
+
+.asistente-msg.error {
+  background: var(--rosa-polvoriento);
+  color: white;
+  align-self: flex-start;
+}
+
+.asistente-fuentes {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.asistente-escribiendo {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+.asistente-sugerencias {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.asistente-sugerencias button {
+  background: none;
+  border: 1px solid var(--siena-tostado);
+  color: var(--siena-tostado);
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.asistente-sugerencias button:hover {
+  background: var(--siena-tostado);
+  color: white;
+}
+
+.asistente-input {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-top: 1px solid rgba(160, 82, 45, 0.12);
+  background: var(--fondo-tarjeta);
+}
+
+.asistente-input input {
+  flex: 1;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(160, 82, 45, 0.2);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--texto-principal);
+}
+
+.asistente-input button {
+  background: var(--siena-tostado);
+  color: white;
+  border: none;
+  padding: 0 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.asistente-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

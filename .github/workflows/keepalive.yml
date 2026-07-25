@@ -2,32 +2,42 @@ name: Keep Render Service Alive
 
 on:
   schedule:
-    # Ejecuta cada 14 minutos (Render duerme después de 15 min de inactividad)
-    - cron: '*/14 * * * *'
-  # Permite ejecutar manualmente desde GitHub Actions
+    # Render duerme el servicio tras 15 min de inactividad.
+    # Cada 14 minutos serían ~3.100 ejecuciones al mes; en horario de uso
+    # (09–23 ART = 12–02 UTC) alcanza y baja el consumo a menos de la mitad.
+    - cron: '*/14 12-23,0-2 * * *'
   workflow_dispatch:
 
 jobs:
-  ping-render:
+  ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Health Check
+      - name: Ping al health check
+        env:
+          RENDER_URL: ${{ secrets.RENDER_URL }}
         run: |
-          # Reemplaza con tu URL de Render
-          RENDER_URL="${{ secrets.RENDER_URL || 'https://tu-app.onrender.com' }}"
-          
-          echo "🏓 Haciendo ping a: $RENDER_URL/health"
-          
-          # Hacer petición al health check
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_URL/health" || echo "000")
-          
-          echo "📡 Código de respuesta: $RESPONSE"
-          
-          if [ "$RESPONSE" = "200" ]; then
-            echo "✅ Servicio activo"
-          else
-            echo "⚠️ Servicio no respondió correctamente (puede estar iniciando)"
+          set -euo pipefail
+
+          # Antes había un fallback a 'https://tu-app.onrender.com': si el
+          # secret no estaba cargado, el workflow pingueaba un dominio ajeno
+          # y salía en verde. Un check que no puede fallar no sirve de nada.
+          if [ -z "${RENDER_URL}" ]; then
+            echo "::error::Falta el secret RENDER_URL (Settings → Secrets and variables → Actions)."
+            exit 1
           fi
-          
-          # No fallar el workflow si el servicio está iniciando
-          exit 0
+
+          echo "Pingueando ${RENDER_URL}/health"
+
+          CODIGO=$(curl -s -o /tmp/respuesta.json -w "%{http_code}" \
+            --max-time 90 --retry 2 --retry-delay 15 \
+            "${RENDER_URL}/health" || echo "000")
+
+          echo "Código de respuesta: ${CODIGO}"
+          cat /tmp/respuesta.json 2>/dev/null || true
+          echo
+
+          if [ "${CODIGO}" != "200" ]; then
+            echo "::warning::El servicio no respondió 200 (puede estar arrancando)."
+          else
+            echo "Servicio activo."
+          fi

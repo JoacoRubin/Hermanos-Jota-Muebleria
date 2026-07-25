@@ -1,68 +1,67 @@
-import { useAuth } from '../contexts/AuthContext'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import ModernLayout from '../components/ModernLayout'
+import { formatearFecha } from '../constants'
 
 function Profile() {
-  const { user, logout } = useAuth()
+  const { user, isAdmin } = useAuth()
 
-  if (!user) {
-    return null // ProtectedRoute se encargará de redirigir
-  }
+  // ProtectedRoute ya garantiza que hay sesión; esto es solo defensa.
+  if (!user) return null
 
   return (
-    <ModernLayout title="Mi Perfil">
+    <ModernLayout title="Mi perfil">
       <div className="auth-container">
         <div className="auth-card">
-          <h2 className="auth-title">Mi Perfil</h2>
-          
+          <h1 className="auth-title">Mi perfil</h1>
+
           <div className="profile-info">
             <div className="profile-avatar">
-              <div className="avatar-circle">
+              <div className="avatar-circle" aria-hidden="true">
                 {user.nombre?.charAt(0).toUpperCase()}
               </div>
             </div>
 
-            <div className="profile-details">
+            <dl className="profile-details">
               <div className="profile-field">
-                <label>Nombre Completo</label>
-                <p>{user.nombre}</p>
+                <dt>Nombre completo</dt>
+                <dd>{user.nombre}</dd>
               </div>
 
               <div className="profile-field">
-                <label>Email</label>
-                <p>{user.email}</p>
+                <dt>Email</dt>
+                <dd>{user.email}</dd>
               </div>
 
               <div className="profile-field">
-                <label>Rol</label>
-                <p className="badge-role">
-                  {user.role === 'admin' ? '👑 Administrador' : '👤 Usuario'}
-                </p>
+                <dt>Rol</dt>
+                <dd className="badge-role">
+                  {isAdmin ? '👑 Administrador' : '👤 Usuario'}
+                </dd>
               </div>
 
               {user.createdAt && (
                 <div className="profile-field">
-                  <label>Miembro desde</label>
-                  <p>{new Date(user.createdAt).toLocaleDateString('es-AR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}</p>
+                  <dt>Miembro desde</dt>
+                  <dd>{formatearFecha(user.createdAt)}</dd>
                 </div>
               )}
-            </div>
+            </dl>
           </div>
 
           <div className="profile-actions">
             <Link to="/productos" className="btn btn-primary">
-              Ver Catálogo de Productos
+              Ver catálogo
+            </Link>
+            <Link to="/mis-pedidos" className="btn btn-secondary">
+              📦 Mis pedidos
             </Link>
             <Link to="/carrito" className="btn btn-secondary">
-              🛒 Ir a Mi Carrito
+              🛒 Mi carrito
             </Link>
-            {user.role === 'admin' && (
+            {isAdmin && (
               <Link to="/admin/crear-producto" className="btn btn-accent">
-                ➕ Crear Nuevo Producto
+                ➕ Crear producto
               </Link>
             )}
           </div>

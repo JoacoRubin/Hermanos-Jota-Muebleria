@@ -1,84 +1,76 @@
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
+const ApiError = require('../utils/ApiError')
+const { tokens } = require('../config')
 
-// Middleware para verificar el token JWT
-const authMiddleware = async (req, res, next) => {
+/**
+ * Exige un access token válido y carga el usuario en `req.user`.
+ */
+async function authMiddleware(req, res, next) {
   try {
-    // Obtener el token del header
     const authHeader = req.headers.authorization
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        message: 'No autorizado. Token no proporcionado.' 
-      })
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw ApiError.unauthorized('No autorizado. Token no proporcionado.')
     }
 
-    // Extraer el token
-    const token = authHeader.split(' ')[1]
-
+    const token = authHeader.slice('Bearer '.length).trim()
     if (!token) {
-      return res.status(401).json({ 
-        message: 'No autorizado. Token no proporcionado.' 
-      })
+      throw ApiError.unauthorized('No autorizado. Token no proporcionado.')
     }
 
-    // Verificar el token
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'fallback-secret-key-change-in-production'
-    )
-
-    // Buscar el usuario
-    const user = await User.findById(decoded.id).select('-password')
+    const payload = tokens.verifyAccessToken(token)
+    const user = await User.findById(payload.sub)
 
     if (!user) {
-      return res.status(401).json({ 
-        message: 'No autorizado. Usuario no encontrado.' 
-      })
+      throw ApiError.unauthorized('No autorizado. Usuario no encontrado.')
     }
 
-    // Agregar el usuario a la request
     req.user = {
-      id: user._id,
+      // `.toString()` no es cosmético: `_id` es un ObjectId, y compararlo con
+      // `!==` contra un string da siempre `true`. Ese era el bug que hacía que
+      // GET /api/orders/:id devolviera 403 hasta al dueño del pedido.
+      id: user._id.toString(),
       nombre: user.nombre,
       email: user.email,
-      role: user.role
+      role: user.role,
     }
 
     next()
   } catch (error) {
-    console.error('Error en middleware de autenticación:', error.message)
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token inválido' })
+    if (error instanceof jwt.TokenExpiredError) {
+      return next(ApiError.unauthorized('Token expirado'))
     }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expirado' })
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(ApiError.unauthorized('Token inválido'))
+    }
+    next(error)
+  }
+}
+
+/**
+ * Exige uno de los roles indicados. Se usa SIEMPRE después de `authMiddleware`.
+ */
+function requireRole(...roles) {
+  return function roleMiddleware(req, res, next) {
+    if (!req.user) {
+      return next(
+        ApiError.unauthorized('No autorizado. Debe iniciar sesión primero.')
+      )
     }
 
-    res.status(401).json({ message: 'No autorizado' })
+    if (!roles.includes(req.user.role)) {
+      return next(
+        ApiError.forbidden(
+          'Acceso denegado. Se requieren permisos de administrador.'
+        )
+      )
+    }
+
+    next()
   }
 }
 
-// Middleware para verificar si el usuario es admin
-const adminMiddleware = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ 
-      message: 'No autorizado. Debe iniciar sesión primero.' 
-    })
-  }
+const adminMiddleware = requireRole('admin')
 
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      message: 'Acceso denegado. Se requieren permisos de administrador.' 
-    })
-  }
-
-  next()
-}
-
-module.exports = {
-  authMiddleware,
-  adminMiddleware
-}
+module.exports = { authMiddleware, requireRole, adminMiddleware }

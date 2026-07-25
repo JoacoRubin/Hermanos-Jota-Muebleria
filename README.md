@@ -1,208 +1,215 @@
-# 🪑 Mueblería Hermanos Jota - E-commerce Full Stack
+# 🪑 Mueblería Hermanos Jota — E-commerce Full Stack
 
-## 👥 Integrantes del Proyecto
-Joaquin Rubinstein
-Andres Suarez
-Gonzalo Ruiz
-Guillermo Villalba
+## 👥 Integrantes del proyecto
+
+Joaquin Rubinstein · Andres Suarez · Gonzalo Ruiz · Guillermo Villalba
 
 ---
 
-## 📋 Descripción del Proyecto
+## 📋 Descripción
 
-**Mueblería Hermanos Jota** es una aplicación web de e-commerce desarrollada para la venta de muebles premium. El proyecto implementa una arquitectura Full Stack con Node.js/Express en el backend y React/Vite en el frontend, ofreciendo una experiencia de usuario completa con autenticación, carrito de compras y gestión de pedidos.
+Aplicación de e-commerce para la venta de muebles premium. Backend en
+Node.js/Express con MongoDB, frontend en React/Vite.
 
-### ✨ Funcionalidades Sprint 7 y 8
-- 🔐 **Sistema de Autenticación**: Registro y login con JWT
-- 👤 **Perfiles de Usuario**: Vista de perfil con información del usuario
-- 🛒 **Carrito de Compras**: Sistema completo con checkout
-- 📦 **Gestión de Pedidos**: Crear y visualizar historial de pedidos
-- 🔒 **Rutas Protegidas**: Frontend y backend con middleware JWT
-- 👨‍💼 **Panel de Admin**: Crear y gestionar productos
-- 🗄️ **MongoDB Atlas**: Base de datos en la nube
-- 🌐 **Desplegable**: Configurado para producción en Render/Netlify
+### Funcionalidades
 
-## 🚀 Instalación y Ejecución Local
+- 🔐 Autenticación con access token corto + refresh token rotativo en cookie `httpOnly`
+- 👤 Perfiles de usuario y roles (`user` / `admin`)
+- 🛒 Carrito de compras por usuario
+- 📦 Pedidos con validación de stock y precios calculados en el servidor
+- 🔒 Rutas protegidas por sesión y por rol, en frontend **y** backend
+- 👨‍💼 Panel de administración de productos
+- ✉️ Formulario de contacto con persistencia y bandeja para administradores
+- 🗄️ MongoDB Atlas
+- ✅ 82 tests automatizados (52 de integración en la API + 30 en el frontend)
 
-### 1️⃣ Clonar el Repositorio
+---
+
+## 🚀 Puesta en marcha
+
+### 1. Clonar
+
 ```bash
 git clone https://github.com/JoacoRubin/Hermanos-Jota-Muebleria.git
 cd Hermanos-Jota-Muebleria
 ```
 
-### 2️⃣ Configurar Variables de Entorno
+### 2. Variables de entorno
 
-#### Backend (`backend/.env`)
-Crea el archivo `.env` en la carpeta `backend` y agrega:
+Seguí **[docs/DEPLOY.md](docs/DEPLOY.md)** para crear `backend/.env` y
+`client/.env.local`.
+
+> ⚠️ Este README **ya no contiene secretos**. La versión anterior publicaba el
+> `JWT_SECRET` real en un repositorio público, lo que permitía a cualquiera
+> firmar tokens válidos para cualquier usuario. Si todavía no rotaste ese
+> secreto, hacelo antes que nada: sección 2 de `docs/DEPLOY.md`.
+
+### 3. Instalar dependencias
+
+Son **dos paquetes independientes**. No hay `package.json` en la raíz.
+
+```bash
+cd backend && npm install
+cd ../client && npm install
 ```
-MONGO_URI=mongodb+srv://<usuario>:<contraseña>@cluster0.jo6svin.mongodb.net/?appName=Cluster0
-JWT_SECRET=hermanos-jota-secret-key-2024-jwt-super-secure
-PORT=5000
-```
-- Reemplaza `<usuario>` y `<contraseña>` por tus credenciales de MongoDB Atlas.
 
-#### Frontend (`client/.env.local`)
-Crea el archivo `.env.local` en la carpeta `client` y agrega:
-```
-VITE_API_URL=http://localhost:5000
-```
+### 4. Cargar datos iniciales
 
----
-
-### 3️⃣ Instalar Dependencias
-
-#### Backend
 ```bash
 cd backend
-npm install
+npm run seed          # catálogo de productos
+npm run seed:admin    # usuario administrador (requiere SEED_ADMIN_* en .env)
 ```
 
-#### Frontend
+### 5. Levantar el proyecto
+
+Dos terminales:
+
 ```bash
-cd ..
-npm install
+# Terminal 1 — API en http://localhost:5000
+cd backend && npm run dev
+
+# Terminal 2 — Frontend en http://localhost:3000
+cd client && npm run dev
 ```
 
 ---
 
-### 4️⃣ Ejecutar el Proyecto
+## 🧪 Tests y calidad
 
-#### Iniciar el Backend (Puerto 5000)
 ```bash
-# Desde la carpeta backend
-npm start
-```
-El servidor backend estará disponible en: `http://localhost:5000`
-- **API productos**: http://localhost:5000/api/productos
+cd backend
+npm test          # 52 tests de integración (MongoDB en memoria)
+npm run lint
 
-#### Iniciar el Frontend (Puerto 3000)
-```bash
-# Desde la raíz del proyecto (en otra terminal)
-npm run dev
-```
-La aplicación frontend estará disponible en: `http://localhost:3000`
-
-### 📌 Comandos Rápidos
-
-#### Opción 1: Dos terminales separadas
-```bash
-# Terminal 1 - Backend
-cd backend && npm start
-
-# Terminal 2 - Frontend  
-npm run dev
+cd ../client
+npm test          # 30 tests con Vitest + Testing Library
+npm run lint
+npm run build
 ```
 
-#### Opción 2: Una sola terminal (Windows PowerShell)
-```powershell
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; npm start" ; Start-Sleep -Seconds 3 ; npm run dev
-```
+**Backend** — que el CRUD de productos exija rol admin, que el precio de un
+pedido no se pueda manipular desde el cliente, que el stock se descuente de
+forma atómica y se devuelva si algo falla, que un usuario no pueda ver pedidos
+ajenos y que un refresh token no se pueda reutilizar.
 
-### 🔧 Tecnologías Utilizadas
-
-#### Backend
-- **Node.js**: Runtime de JavaScript
-- **Express.js**: Framework web minimalista
-- **Mongoose**: ODM para MongoDB
-- **MongoDB Atlas**: Base de datos en la nube
-- **Middleware personalizado**: Logging y manejo de errores
-
-#### Frontend
-- **React 18**: Biblioteca de interfaz de usuario
-- **Vite**: Herramienta de build rápida
-- **CSS**: Estilos personalizados con efectos y responsividad
-- **React Router DOM**: Navegación SPA profesional
-- **Context API**: Gestión de estado global (Auth, Cart)
-
-#### Seguridad y Autenticación
-- **JWT (JSON Web Tokens)**: Autenticación segura
-- **bcrypt**: Encriptación de contraseñas
-- **Middleware de autenticación**: Protección de rutas
+**Frontend** — que el carrito no se filtre entre usuarios del mismo navegador,
+que un `POST` nunca se reintente (duplicaría pedidos), que el refresh de sesión
+sea de un solo vuelo y que una ruta de admin bloquee a un usuario común.
 
 ---
 
-## 🚀 URLs de la Aplicación
-
-### 🖥️ Desarrollo Local
-- **Frontend**: http://localhost:3000 (o 3001)
-- **Backend API**: http://localhost:5000
-- **API Productos**: http://localhost:5000/api/productos
-- **API Auth**: http://localhost:5000/api/auth
-- **API Orders**: http://localhost:5000/api/orders
-
-### 🌐 Producción
-- **Frontend**: https://vermillion-gnome-5f2469.netlify.app
-- **Backend API**: https://hermanos-jota-muebleria-1.onrender.com
-- **API Productos**: https://hermanos-jota-muebleria-1.onrender.com/api/productos
-- **MongoDB**: MongoDB Atlas (configurado y funcionando)
-
----
-
-## Estructura del Proyecto
+## 🏗️ Arquitectura
 
 ```
 Hermanos-Jota-Muebleria/
 ├── backend/
-│   ├── package.json
-│   ├── .env
-│   ├── README.md
-│   └── src/
-│       ├── app.js
-│       ├── seed.js
-│       ├── controllers/
-│       │   ├── productos.controller.js
-│       │   ├── auth.controller.js
-│       │   └── orders.controller.js
-│       ├── models/
-│       │   ├── Product.js
-│       │   ├── User.js
-│       │   └── Order.js
-│       ├── middleware/
-│       │   └── auth.js
-│       └── routes/
-│           ├── productos.routes.js
-│           ├── auth.routes.js
-│           └── orders.routes.js
-├── client/
-│   ├── package.json
-│   ├── .env.local
-│   ├── .env.example
-│   ├── README.md
-│   ├── vercel.json
-│   ├── public/
-│   │   ├── _redirects
-│   │   └── images/
-│   └── src/
-│       ├── App.jsx
-│       ├── main.jsx
-│       ├── index.css
-│       ├── components/
-│       │   ├── ModernLayout.jsx
-│       │   ├── Navbar.jsx
-│       │   ├── ProtectedRoute.jsx
-│       │   └── FormCreateProduct.jsx
-│       ├── contexts/
-│       │   ├── CartContext.jsx
-│       │   └── AuthContext.jsx
-│       ├── data/
-│       │   └── mockProducts.js
-│       ├── pages/
-│       │   ├── Home.jsx
-│       │   ├── Products.jsx
-│       │   ├── ProductDetail.jsx
-│       │   ├── Cart.jsx
-│       │   ├── Contact.jsx
-│       │   ├── Login.jsx
-│       │   ├── Register.jsx
-│       │   ├── Profile.jsx
-│       │   └── MisPedidos.jsx
-│       └── services/
-│           ├── productService.js
-│           ├── authService.js
-│           └── orderService.js
-├── README.md
-└── package.json
+│   ├── src/
+│   │   ├── server.js            # arranque: valida entorno, conecta, escucha
+│   │   ├── app.js               # la app Express (exportable, testeable)
+│   │   ├── config/              # validación de entorno (fail-fast) y DB
+│   │   ├── constants.js         # vocabulario del dominio
+│   │   ├── schemas/             # validación de entrada con zod
+│   │   ├── middleware/          # auth, validate, sanitize, rateLimit, errores
+│   │   ├── models/              # schemas de Mongoose
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── serializers/         # única fuente de verdad de las respuestas
+│   │   ├── utils/               # tokens, paginación, ApiError, asyncHandler
+│   │   └── data/                # catálogo de seed
+│   └── tests/
+└── client/
+    └── src/
+        ├── services/            # apiClient + servicios por recurso
+        ├── contexts/            # Auth, Cart, UI (toasts y diálogos)
+        ├── components/          # ui/, cart/, products/
+        ├── pages/
+        ├── constants.js         # espejo del dominio del backend
+        └── styles/
+```
 
+### Decisiones que conviene conocer
 
+**El frontend no es una capa de seguridad.** `ProtectedRoute` evita que el
+usuario llegue a una pantalla que igual le va a fallar; la autorización real
+está en `requireRole('admin')` del backend. Hacen falta las dos, y no son
+intercambiables.
 
+**El precio lo pone el servidor.** Al crear un pedido, el cliente sólo manda
+`producto` y `cantidad`. El nombre, el precio y la imagen se leen de la base.
 
+**El access token vive en memoria.** Dura 15 minutos y nunca toca
+`localStorage`. El refresh token va en una cookie `httpOnly` de 7 días, rota en
+cada uso y, si se detecta reutilización, se revocan todas las sesiones del
+usuario.
+
+**Todo lo que entra se valida con zod, en modo estricto.** Un campo no
+declarado hace fallar la petición. Eso es lo que elimina el mass assignment.
+
+---
+
+## 🔧 Tecnologías
+
+**Backend** — Express 4 · Mongoose 8 · zod · jsonwebtoken · bcrypt · helmet ·
+express-rate-limit · node:test + supertest + mongodb-memory-server
+
+**Frontend** — React 18 · Vite 5 · React Router 6 · Context API · CSS propio ·
+Vitest + Testing Library
+
+---
+
+## 🌐 URLs
+
+| Entorno | Frontend | API |
+| --- | --- | --- |
+| Local | http://localhost:3000 | http://localhost:5000 |
+| Producción | https://vermillion-gnome-5f2469.netlify.app | https://hermanos-jota-muebleria-1.onrender.com |
+
+### Endpoints
+
+| Método | Ruta | Acceso |
+| --- | --- | --- |
+| GET | `/api/productos` | Público (paginado, filtrable) |
+| GET | `/api/productos/:id` | Público |
+| POST | `/api/productos` | Admin |
+| PUT | `/api/productos/:id` | Admin |
+| DELETE | `/api/productos/:id` | Admin |
+| POST | `/api/auth/register` | Público |
+| POST | `/api/auth/login` | Público |
+| POST | `/api/auth/refresh` | Cookie `httpOnly` |
+| POST | `/api/auth/logout` | Público (idempotente) |
+| GET | `/api/auth/profile` | Autenticado |
+| POST | `/api/orders` | Autenticado |
+| GET | `/api/orders/mis-pedidos` | Autenticado |
+| GET | `/api/orders/:id` | Dueño o admin |
+| GET | `/api/orders/admin/all` | Admin |
+| PUT | `/api/orders/:id/estado` | Admin |
+| POST | `/api/contacto` | Público (5 por hora / IP) |
+| GET | `/api/contacto` | Admin |
+| PUT | `/api/contacto/:id/estado` | Admin |
+| POST | `/api/asistente` | Público (20 cada 5 min / IP) |
+| GET | `/health` | Público |
+
+### Formato de respuesta
+
+Consistente en toda la API. El identificador público siempre se llama `id`.
+
+```jsonc
+// Éxito con colección
+{ "data": [ /* … */ ], "meta": { "page": 1, "limit": 20, "total": 11, "totalPages": 1, "hasNextPage": false, "hasPrevPage": false } }
+
+// Éxito con recurso
+{ "message": "Pedido creado exitosamente", "data": { "id": "…" } }
+
+// Error
+{ "message": "Datos inválidos", "errors": [ { "field": "precio", "message": "El precio no puede ser negativo" } ] }
+```
+
+---
+
+## 📄 Documentación adicional
+
+- **[docs/DEPLOY.md](docs/DEPLOY.md)** — variables de entorno, rotación de
+  secretos, Render, Netlify, cold start y checklist de publicación.
+- **[docs/AUDITORIA.md](docs/AUDITORIA.md)** — auditoría de seguridad y calidad,
+  con el detalle de cada hallazgo y cómo se resolvió.

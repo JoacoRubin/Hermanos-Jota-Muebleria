@@ -1,19 +1,31 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import ModernLayout from '../components/ModernLayout'
 
 function Home() {
+  const location = useLocation()
+
   return (
     <ModernLayout>
-      {/* Hero Card */}
+      {/* Mensaje que deja ProtectedRoute cuando alguien intenta entrar a una
+          sección para la que no tiene permisos. */}
+      {location.state?.message && (
+        <div className="content-card">
+          <p className="info-message" role="status">
+            {location.state.message}
+          </p>
+        </div>
+      )}
+
       <div className="hero-card">
-        <h2 className="hero-title">Bienvenidos a Mueblería Hermanos Jota</h2>
+        <h1 className="hero-title">Bienvenidos a Mueblería Hermanos Jota</h1>
         <p className="hero-description">
-          El redescubrimiento de un arte olvidado: crear muebles que no solo sirven una función, 
-          sino que alimentan el alma. Cada pieza cuenta la historia de manos expertas y materiales nobles, 
-          donde la calidez del optimismo se encuentra con la conciencia de la sustentabilidad.
+          El redescubrimiento de un arte olvidado: crear muebles que no solo
+          sirven una función, sino que alimentan el alma. Cada pieza cuenta la
+          historia de manos expertas y materiales nobles, donde la calidez del
+          optimismo se encuentra con la conciencia de la sustentabilidad.
         </p>
         <Link to="/productos" className="explore-button">
-          🏠 Explorar Catálogo 🏠
+          🏠 Explorar catálogo 🏠
         </Link>
       </div>
     </ModernLayout>

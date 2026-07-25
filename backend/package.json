@@ -1,21 +1,37 @@
 {
   "name": "hj-backend",
-  "version": "1.0.0",
-  "description": "Backend Express + Mongoose para Hermanos Jota Muebleria",
-  "main": "src/app.js",
+  "version": "2.0.0",
+  "description": "Backend Express + Mongoose para Hermanos Jota Mueblería",
+  "main": "src/server.js",
+  "private": true,
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js",
+    "seed:admin": "node src/seed.js --admin",
+    "test": "node --test --test-concurrency=1 tests/",
+    "lint": "eslint ."
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "dotenv": "^16.0.0",
-    "express": "^4.18.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.0.0"
+    "mongoose": "^8.9.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "mongodb-memory-server": "^10.1.3",
+    "supertest": "^7.0.0"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=20.6.0"
   }
 }

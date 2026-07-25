@@ -1,110 +1,62 @@
-import { fetchWithRetry } from '../utils/fetchWithTimeout.js';
+import { api } from './apiClient.js'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-const API_URL = `${API_BASE}/api/orders`
-
-class OrderService {
-  static async createOrder(orderData) {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      throw new Error('No hay token de autenticación')
-    }
-
-    const response = await fetchWithRetry(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+/**
+ * Pedidos.
+ *
+ * Ojo con `createOrder`: solo manda `producto` y `cantidad`. El precio lo
+ * pone el servidor leyéndolo de la base. Si el cliente pudiera mandarlo,
+ * podría comprar un aparador de $210.000 por $1.
+ */
+const OrderService = {
+  async createOrder({ items, direccionEnvio, notas }) {
+    const { data } = await api.post(
+      '/api/orders',
+      {
+        items: items.map((item) => ({
+          producto: item.id,
+          cantidad: item.cantidad,
+        })),
+        direccionEnvio,
+        ...(notas ? { notas } : {}),
       },
-      body: JSON.stringify(orderData)
-    }, 1)
+      { auth: true }
+    )
 
-    return response.json()
-  }
+    return data
+  },
 
-  static async getUserOrders() {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      throw new Error('No hay token de autenticación')
-    }
+  async getUserOrders({ page = 1, limit = 20 } = {}) {
+    const params = new URLSearchParams({ page, limit })
+    const { data, meta } = await api.get(
+      `/api/orders/mis-pedidos?${params}`,
+      { auth: true, reintentos: 2 }
+    )
+    return { pedidos: data, meta }
+  },
 
-    const response = await fetchWithRetry(`${API_URL}/mis-pedidos`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    }, 1)
+  async getOrderById(orderId) {
+    const { data } = await api.get(`/api/orders/${orderId}`, { auth: true })
+    return data
+  },
 
-    return response.json()
-  }
+  async getAllOrders({ page = 1, limit = 20, estado } = {}) {
+    const params = new URLSearchParams({ page, limit })
+    if (estado) params.set('estado', estado)
 
-  static async getOrderById(orderId) {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      throw new Error('No hay token de autenticación')
-    }
-
-    const response = await fetch(`${API_URL}/${orderId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+    const { data, meta } = await api.get(`/api/orders/admin/all?${params}`, {
+      auth: true,
     })
+    return { pedidos: data, meta }
+  },
 
-    if (!response.ok) {
-      throw new Error('Error al obtener el pedido')
-    }
-
-    return response.json()
-  }
-
-  static async getAllOrders() {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      throw new Error('No hay token de autenticación')
-    }
-
-    const response = await fetch(`${API_URL}/admin/all`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Error al obtener todos los pedidos')
-    }
-
-    return response.json()
-  }
-
-  static async updateOrderStatus(orderId, nuevoEstado) {
-    const token = localStorage.getItem('token')
-    
-    if (!token) {
-      throw new Error('No hay token de autenticación')
-    }
-
-    const response = await fetch(`${API_URL}/${orderId}/estado`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ estado: nuevoEstado })
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.mensaje || 'Error al actualizar el estado del pedido')
-    }
-
-    return response.json()
-  }
+  async updateOrderStatus(orderId, estado) {
+    const { data } = await api.put(
+      `/api/orders/${orderId}/estado`,
+      { estado },
+      { auth: true }
+    )
+    return data
+  },
 }
 
 export default OrderService

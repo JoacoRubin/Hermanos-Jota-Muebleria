@@ -1,7 +1,15 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from 'react'
 import AuthService from '../services/authService'
+import { setSessionExpiredHandler } from '../services/apiClient'
 
-const AuthContext = createContext()
+const AuthContext = createContext(null)
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -14,101 +22,83 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
-  // Verificar si hay un usuario autenticado al cargar la app
+  // Al montar se intenta recuperar la sesión con la cookie de refresh.
+  // El access token vive en memoria, así que un F5 siempre lo pierde:
+  // esto es lo que hace que el usuario no tenga que loguearse de nuevo.
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const token = AuthService.getToken()
-        if (token) {
-          const isValid = await AuthService.verifyToken()
-          if (isValid) {
-            const userData = AuthService.getUser()
-            setUser(userData)
-          }
-        }
-      } catch (error) {
-        console.error('Error al inicializar autenticación:', error)
-        AuthService.logout()
-      } finally {
-        setLoading(false)
-      }
-    }
+    let cancelado = false
 
-    initAuth()
+    AuthService.restoreSession()
+      .then((usuario) => {
+        if (!cancelado) setUser(usuario)
+      })
+      .finally(() => {
+        if (!cancelado) setLoading(false)
+      })
+
+    return () => {
+      cancelado = true
+    }
   }, [])
 
-  // Función de registro
-  const register = async (userData) => {
-    try {
-      setError(null)
-      const response = await AuthService.register(userData)
-      setUser(response.user)
-      return response
-    } catch (error) {
-      setError(error.message)
-      throw error
-    }
-  }
+  // Si el refresh falla en cualquier petición, el cliente HTTP avisa acá
+  // y la UI se entera de que la sesión terminó.
+  useEffect(() => {
+    setSessionExpiredHandler(() => setUser(null))
+    return () => setSessionExpiredHandler(() => {})
+  }, [])
 
-  // Función de login
-  const login = async (credentials) => {
-    try {
-      setError(null)
-      const response = await AuthService.login(credentials)
-      setUser(response.user)
-      return response
-    } catch (error) {
-      setError(error.message)
-      throw error
-    }
-  }
+  const register = useCallback(async (userData) => {
+    const usuario = await AuthService.register(userData)
+    setUser(usuario)
+    return usuario
+  }, [])
 
-  // Función de logout
-  const logout = () => {
-    AuthService.logout()
+  const login = useCallback(async (credentials) => {
+    const usuario = await AuthService.login(credentials)
+    setUser(usuario)
+    return usuario
+  }, [])
+
+  const logout = useCallback(async () => {
+    await AuthService.logout()
     setUser(null)
-    setError(null)
-  }
+  }, [])
 
-  // Actualizar perfil
-  const updateProfile = async () => {
-    try {
-      const response = await AuthService.getProfile()
-      setUser(response.user)
-      return response
-    } catch (error) {
-      console.error('Error al actualizar perfil:', error)
-      throw error
-    }
-  }
+  const refreshProfile = useCallback(async () => {
+    const usuario = await AuthService.getProfile()
+    setUser(usuario)
+    return usuario
+  }, [])
 
-  // Verificar si el usuario está autenticado
-  const isAuthenticated = () => {
-    return !!user && AuthService.isAuthenticated()
-  }
-
-  // Verificar si el usuario es admin
-  const isAdmin = () => {
-    return user?.role === 'admin'
-  }
-
-  const value = {
-    user,
-    loading,
-    error,
-    register,
-    login,
-    logout,
-    updateProfile,
-    isAuthenticated,
-    isAdmin
-  }
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      register,
+      login,
+      logout,
+      refreshProfile,
+      // Booleanos, NO funciones. `isAuthenticated` era una función y en
+      // Cart.jsx se evaluaba como `if (!isAuthenticated)`: una referencia a
+      // función siempre es truthy, así que la validación nunca corría.
+      // Con un booleano ese bug no se puede escribir.
+      isAuthenticated: Boolean(user),
+      isAdmin: user?.role === 'admin',
+    }),
+    [user, loading, register, login, logout, refreshProfile]
+  )
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div className="app-loading" role="status" aria-live="polite">
+          Cargando…
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   )
 }

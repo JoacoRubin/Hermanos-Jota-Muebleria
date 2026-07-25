@@ -1,61 +1,40 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import OrderService from '../services/orderService'
 import ModernLayout from '../components/ModernLayout'
+import { formatearPrecio, formatearFecha, COLOR_POR_ESTADO } from '../constants'
 
 function MisPedidos() {
-  const [orders, setOrders] = useState([])
+  const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    loadOrders()
-  }, [])
+  const cargarPedidos = useCallback(async () => {
+    setLoading(true)
+    setError(null)
 
-  const loadOrders = async () => {
     try {
-      setLoading(true)
-      const data = await OrderService.getUserOrders()
-      setOrders(data.pedidos || [])
-      setError(null)
+      const { pedidos: data } = await OrderService.getUserOrders()
+      setPedidos(data)
     } catch (err) {
-      console.error('Error al cargar pedidos:', err)
-      setError(err.message)
+      setError(err.detalle || err.message)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const getEstadoBadgeColor = (estado) => {
-    const colors = {
-      'pendiente': '#FFA500',
-      'procesando': '#2196F3',
-      'enviado': '#9C27B0',
-      'entregado': '#4CAF50',
-      'cancelado': '#F44336'
-    }
-    return colors[estado] || '#757575'
-  }
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('es-AR', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  useEffect(() => {
+    cargarPedidos()
+  }, [cargarPedidos])
 
   if (loading) {
     return (
-      <ModernLayout>
+      <ModernLayout title="Mis Pedidos">
         <div className="content-card">
-          <h1>Mis Pedidos</h1>
-          <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <p>Cargando pedidos...</p>
-          </div>
+          <h1>Mis pedidos</h1>
+          <p className="loading" role="status">
+            Cargando pedidos…
+          </p>
         </div>
       </ModernLayout>
     )
@@ -63,138 +42,105 @@ function MisPedidos() {
 
   if (error) {
     return (
-      <ModernLayout>
-        <div className="content-card">
-          <h1>Mis Pedidos</h1>
-          <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <p style={{ color: 'var(--rosa-polvoriento)' }}>Error: {error}</p>
-            <button onClick={loadOrders} className="explore-button" style={{ marginTop: '1rem' }}>
-              Reintentar
-            </button>
-          </div>
+      <ModernLayout title="Mis Pedidos">
+        <div className="content-card estado-vacio">
+          <h1>Mis pedidos</h1>
+          <p className="error-message" role="alert">
+            {error}
+          </p>
+          <button type="button" onClick={cargarPedidos} className="explore-button">
+            Reintentar
+          </button>
         </div>
       </ModernLayout>
     )
   }
 
-  if (orders.length === 0) {
+  if (pedidos.length === 0) {
     return (
-      <ModernLayout>
-        <div className="content-card">
-          <h1>Mis Pedidos</h1>
-          <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📦</div>
-            <h2>No tienes pedidos aún</h2>
-            <p>Comienza a explorar nuestro catálogo</p>
-            <Link to="/productos" className="explore-button" style={{ marginTop: '2rem' }}>
-              Ver Productos
-            </Link>
+      <ModernLayout title="Mis Pedidos">
+        <div className="content-card estado-vacio">
+          <div className="estado-vacio__icono" aria-hidden="true">
+            📦
           </div>
+          <h1>Todavía no tenés pedidos</h1>
+          <p>Empezá a explorar nuestro catálogo.</p>
+          <Link to="/productos" className="explore-button">
+            Ver productos
+          </Link>
         </div>
       </ModernLayout>
     )
   }
 
   return (
-    <ModernLayout>
+    <ModernLayout title="Mis Pedidos">
       <div className="content-card">
-        <h1>Mis Pedidos</h1>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {orders.map((order) => (
-            <div 
-              key={order._id} 
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                padding: '1.5rem',
-                border: '1px solid rgba(160, 82, 45, 0.1)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-              }}
-            >
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start',
-                marginBottom: '1rem',
-                paddingBottom: '1rem',
-                borderBottom: '1px solid rgba(160, 82, 45, 0.1)'
-              }}>
+        <h1>Mis pedidos</h1>
+
+        <div className="pedidos-lista">
+          {pedidos.map((pedido) => (
+            <article key={pedido.id} className="pedido-card">
+              <header className="pedido-card__header">
                 <div>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--siena-tostado)' }}>
-                    Pedido #{order._id.slice(-8).toUpperCase()}
-                  </h3>
-                  <p style={{ margin: 0, color: 'var(--texto-secundario)', fontSize: '0.9rem' }}>
-                    {formatDate(order.fechaPedido)}
+                  <h2 className="pedido-card__numero">
+                    Pedido #{pedido.id.slice(-8).toUpperCase()}
+                  </h2>
+                  <p className="pedido-card__fecha">
+                    {/* Antes leía `order.fechaPedido`, un campo que nunca
+                        existió: el schema usa timestamps, así que es
+                        `createdAt`. En pantalla se veía "Invalid Date". */}
+                    {formatearFecha(pedido.createdAt, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </p>
                 </div>
-                <span 
-                  style={{ 
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    backgroundColor: getEstadoBadgeColor(order.estado),
-                    color: 'white',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    textTransform: 'capitalize'
+
+                <span
+                  className="pedido-card__estado"
+                  style={{
+                    backgroundColor:
+                      COLOR_POR_ESTADO[pedido.estado] || '#757575',
                   }}
                 >
-                  {order.estado}
+                  {pedido.estado}
                 </span>
-              </div>
+              </header>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--siena-tostado)' }}>
-                  Productos ({order.cantidadTotal} {order.cantidadTotal === 1 ? 'artículo' : 'artículos'})
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {order.items.map((item, index) => (
-                    <div 
-                      key={index}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        padding: '0.5rem',
-                        backgroundColor: 'rgba(160, 82, 45, 0.05)',
-                        borderRadius: '6px'
-                      }}
-                    >
+              <div className="pedido-card__items">
+                <h3>
+                  Productos ({pedido.cantidadTotal}{' '}
+                  {pedido.cantidadTotal === 1 ? 'artículo' : 'artículos'})
+                </h3>
+                <ul>
+                  {pedido.items.map((item) => (
+                    <li key={item.productoId} className="pedido-item">
                       <span>
-                        {item.nombre} <span style={{ color: 'var(--texto-secundario)' }}>x{item.cantidad}</span>
+                        {item.nombre}{' '}
+                        <span className="pedido-item__cantidad">
+                          ×{item.cantidad}
+                        </span>
                       </span>
-                      <span style={{ fontWeight: '600', color: 'var(--siena-tostado)' }}>
-                        ${(item.precio * item.cantidad).toLocaleString('es-AR')}
+                      <span className="pedido-item__subtotal">
+                        {formatearPrecio(item.subtotal)}
                       </span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
 
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                paddingTop: '1rem',
-                borderTop: '1px solid rgba(160, 82, 45, 0.1)'
-              }}>
+              <footer className="pedido-card__footer">
                 <div>
-                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', color: 'var(--texto-secundario)' }}>
-                    📍 Envío a:
-                  </p>
-                  <p style={{ margin: 0, fontWeight: '500' }}>
-                    {order.direccionEnvio}
-                  </p>
+                  <p className="pedido-card__label">📍 Envío a:</p>
+                  <p>{pedido.direccionEnvio}</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem', color: 'var(--texto-secundario)' }}>
-                    Total
-                  </p>
-                  <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: '700', color: 'var(--siena-tostado)' }}>
-                    ${order.total.toLocaleString('es-AR')}
-                  </p>
+                <div className="pedido-card__total">
+                  <p className="pedido-card__label">Total</p>
+                  <p>{formatearPrecio(pedido.total)}</p>
                 </div>
-              </div>
-            </div>
+              </footer>
+            </article>
           ))}
         </div>
       </div>

@@ -1,132 +1,154 @@
 import { useState } from 'react'
 import ModernLayout from '../components/ModernLayout'
+import { useUI } from '../contexts/UIContext'
+import ContactService from '../services/contactService'
 
+const EMAIL_CONTACTO = 'info@hermanosjota.com.ar'
+const ESTADO_INICIAL = { nombre: '', email: '', mensaje: '' }
+
+/**
+ * Formulario de contacto.
+ *
+ * Antes hacía `console.log` y mostraba "¡Mensaje enviado!": el usuario creía
+ * que alguien había recibido su consulta y no la recibía nadie. Ahora la
+ * consulta se envía de verdad a `POST /api/contacto`, queda persistida y un
+ * administrador la ve en el listado.
+ */
 function Contact() {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    mensaje: ''
-  })
-  const [submitted, setSubmitted] = useState(false)
+  const { toast } = useUI()
+  const [formData, setFormData] = useState(ESTADO_INICIAL)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [enviado, setEnviado] = useState(false)
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+  const handleChange = (evento) => {
+    const { name, value } = evento.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (error) setError(null)
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    
-    // Validaciones básicas
-    if (!formData.nombre.trim() || !formData.email.trim() || !formData.mensaje.trim()) {
-      alert('Por favor completa todos los campos')
-      return
+  const handleSubmit = async (evento) => {
+    evento.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      const mensaje = await ContactService.enviarConsulta(formData)
+      setFormData(ESTADO_INICIAL)
+      setEnviado(true)
+      toast.success(mensaje || 'Recibimos tu consulta.')
+    } catch (err) {
+      // Si falla, se dice que falló. No se finge un envío exitoso.
+      setError(err.detalle || err.message)
+      toast.error('No pudimos enviar tu consulta')
+    } finally {
+      setLoading(false)
     }
-
-    // Aquí normalmente enviarías los datos a un servidor
-    console.log('Formulario de contacto enviado:', formData)
-    
-    setSubmitted(true)
-    
-    // Resetear formulario después de 3 segundos
-    setTimeout(() => {
-      setSubmitted(false)
-      setFormData({ nombre: '', email: '', mensaje: '' })
-    }, 3000)
   }
 
-  if (submitted) {
+  if (enviado) {
     return (
-      <ModernLayout>
-        <div className="content-card" style={{ textAlign: 'center' }}>
-          <h1>¡Mensaje Enviado!</h1>
-          <p>Gracias por contactarnos. Te responderemos pronto.</p>
-          <div style={{ 
-            backgroundColor: 'var(--verde-salvia)',
-            color: 'white',
-            padding: '1rem',
-            borderRadius: '8px',
-            margin: '2rem auto',
-            maxWidth: '400px'
-          }}>
-            ✓ Tu mensaje ha sido recibido exitosamente
+      <ModernLayout title="Contacto">
+        <div className="content-card estado-vacio">
+          <div className="estado-vacio__icono" aria-hidden="true">
+            ✉️
           </div>
+          <h1>¡Mensaje enviado!</h1>
+          <p>
+            Recibimos tu consulta y te vamos a responder al email que dejaste.
+          </p>
+          <button
+            type="button"
+            className="explore-button"
+            onClick={() => setEnviado(false)}
+          >
+            Enviar otra consulta
+          </button>
         </div>
       </ModernLayout>
     )
   }
 
   return (
-    <ModernLayout>
+    <ModernLayout title="Contacto">
       <div className="content-card">
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>Contacto</h1>
-        <p style={{ textAlign: 'center', margin: '2rem 0', fontSize: '1.2rem', lineHeight: '1.8' }}>
-          ¿Tienes alguna pregunta o comentario? ¡Nos encantaría saber de ti!
+        <h1>Contacto</h1>
+        <p className="contacto-intro">
+          ¿Tenés alguna pregunta o comentario? Nos encantaría saber de vos.
         </p>
-      
-      <form onSubmit={handleSubmit} className="form">
-        <div className="form-group">
-          <label htmlFor="nombre">Nombre Completo *</label>
-          <input
-            type="text"
-            id="nombre"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            required
-            placeholder="Tu nombre completo"
-          />
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="email">Correo Electrónico *</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            placeholder="tu@email.com"
-          />
-        </div>
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
+          </div>
+        )}
 
-        <div className="form-group">
-          <label htmlFor="mensaje">Mensaje *</label>
-          <textarea
-            id="mensaje"
-            name="mensaje"
-            value={formData.mensaje}
-            onChange={handleChange}
-            required
-            rows="6"
-            placeholder="Escribe tu mensaje aquí..."
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="form">
+          <div className="form-group">
+            <label htmlFor="nombre">Nombre completo *</label>
+            <input
+              type="text"
+              id="nombre"
+              name="nombre"
+              value={formData.nombre}
+              onChange={handleChange}
+              required
+              minLength={2}
+              maxLength={80}
+              placeholder="Tu nombre completo"
+              autoComplete="name"
+              disabled={loading}
+            />
+          </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <button type="submit" className="btn btn-primary">
-            Enviar Mensaje
-          </button>
-        </div>
-      </form>
+          <div className="form-group">
+            <label htmlFor="email">Correo electrónico *</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              placeholder="tu@email.com"
+              autoComplete="email"
+              disabled={loading}
+            />
+          </div>
 
-      <div style={{ 
-        marginTop: '3rem', 
-        padding: '2.5rem',
-        backgroundColor: 'rgba(160, 82, 45, 0.1)',
-        borderRadius: '12px',
-        textAlign: 'center',
-        border: '1px solid rgba(160, 82, 45, 0.2)'
-      }}>
-        <h3 style={{ fontSize: '1.8rem', marginBottom: '1.5rem', color: 'var(--siena-tostado)' }}>Información de Contacto</h3>
-        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📧 Email: info@hermanosjota.com.ar</p>
-        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📞 Teléfono: +54 (11) 4567-8900</p>
-        <p style={{ fontSize: '1.15rem', margin: '1rem 0', lineHeight: '1.8' }}>📍 Dirección: Av. San Juan 2847, CABA, Argentina</p>
-      </div>
+          <div className="form-group">
+            <label htmlFor="mensaje">Mensaje *</label>
+            <textarea
+              id="mensaje"
+              name="mensaje"
+              value={formData.mensaje}
+              onChange={handleChange}
+              required
+              minLength={10}
+              maxLength={2000}
+              rows={6}
+              placeholder="Escribí tu mensaje acá…"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-actions form-actions--center">
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Enviando…' : 'Enviar mensaje'}
+            </button>
+          </div>
+        </form>
+
+        <section className="contacto-datos">
+          <h2>Información de contacto</h2>
+          <p>
+            📧 <a href={`mailto:${EMAIL_CONTACTO}`}>{EMAIL_CONTACTO}</a>
+          </p>
+          <p>
+            📞 <a href="tel:+541145678900">+54 (11) 4567-8900</a>
+          </p>
+          <p>📍 Av. San Juan 2847, CABA, Argentina</p>
+        </section>
       </div>
     </ModernLayout>
   )

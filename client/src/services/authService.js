@@ -1,157 +1,61 @@
-import { fetchWithRetry } from '../utils/fetchWithTimeout.js';
+import { api, setAccessToken } from './apiClient.js'
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth`;
+/**
+ * Autenticación contra la API.
+ *
+ * Ya no toca localStorage: el access token vive en memoria (dentro de
+ * `apiClient`) y el refresh token en una cookie httpOnly que el JavaScript
+ * de la página no puede leer.
+ */
+const AuthService = {
+  async register(userData) {
+    const { data } = await api.post('/api/auth/register', userData)
+    setAccessToken(data.accessToken)
+    return data.user
+  },
 
-class AuthService {
-  // Registrar nuevo usuario
-  static async register(userData) {
+  async login(credentials) {
+    const { data } = await api.post('/api/auth/login', credentials)
+    setAccessToken(data.accessToken)
+    return data.user
+  },
+
+  async logout() {
     try {
-      const response = await fetchWithRetry(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      }, 1);
-
-      const data = await response.json();
-
-      // Guardar token en localStorage
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error en registro:', error);
-      throw error;
+      await api.post('/api/auth/logout')
+    } finally {
+      // Aunque el servidor no conteste, la sesión local se corta igual.
+      setAccessToken(null)
     }
-  }
+  },
 
-  // Login de usuario
-  static async login(credentials) {
+  /**
+   * Recupera la sesión al cargar la app.
+   *
+   * El access token se perdió al refrescar la página (vive en memoria, es lo
+   * esperado), así que se pide uno nuevo con la cookie de refresh. Si no hay
+   * cookie válida, simplemente no hay sesión.
+   */
+  async restoreSession() {
     try {
-      const response = await fetchWithRetry(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      }, 1);
-
-      const data = await response.json();
-
-      // Guardar token en localStorage
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error en login:', error);
-      throw error;
+      const { data } = await api.post('/api/auth/refresh')
+      setAccessToken(data.accessToken)
+      return data.user
+    } catch {
+      setAccessToken(null)
+      return null
     }
-  }
+  },
 
-  // Logout
-  static logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  }
+  async getProfile() {
+    const { data } = await api.get('/api/auth/profile', { auth: true })
+    return data.user
+  },
 
-  // Obtener token almacenado
-  static getToken() {
-    return localStorage.getItem('token');
-  }
-
-  // Obtener usuario almacenado
-  static getUser() {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        return JSON.parse(userStr);
-      } catch (error) {
-        console.error('Error parsing user:', error);
-        return null;
-      }
-    }
-    return null;
-  }
-
-  // Verificar si hay un usuario autenticado
-  static isAuthenticated() {
-    return !!this.getToken();
-  }
-
-  // Obtener perfil del usuario
-  static async getProfile() {
-    try {
-      const token = this.getToken();
-      
-      if (!token) {
-        throw new Error('No hay token de autenticación');
-      }
-
-      const response = await fetchWithRetry(`${API_BASE_URL}/profile`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      }, 1);
-
-      const data = await response.json();
-
-      // Actualizar usuario en localStorage
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error obteniendo perfil:', error);
-      throw error;
-    }
-  }
-
-  // Verificar si el token es válido
-  static async verifyToken() {
-    try {
-      const token = this.getToken();
-      
-      if (!token) {
-        return false;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/verify`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.valid) {
-        this.logout();
-        return false;
-      }
-
-      // Actualizar usuario en localStorage
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error verificando token:', error);
-      this.logout();
-      return false;
-    }
-  }
+  // No hay `isAuthenticated()` acá a propósito. Tener una función con ese
+  // nombre en el service y un booleano homónimo en el contexto es la
+  // ambigüedad que produjo el bug de `if (!isAuthenticated)` en el carrito.
+  // El único lugar que responde esa pregunta es `useAuth().isAuthenticated`.
 }
 
-export default AuthService;
+export default AuthService

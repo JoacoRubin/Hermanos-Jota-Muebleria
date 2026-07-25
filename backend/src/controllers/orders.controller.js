@@ -1,153 +1,244 @@
 const Order = require('../models/Order')
+const Product = require('../models/Product')
+const ApiError = require('../utils/ApiError')
+const asyncHandler = require('../utils/asyncHandler')
+const { serializeOrder } = require('../serializers')
+const { buildMeta, skipFor } = require('../utils/pagination')
+const { validated } = require('../middleware/validate')
 
-// @desc    Crear un nuevo pedido
-// @route   POST /api/orders
-// @access  Private
-exports.createOrder = async (req, res, next) => {
+/** Evita la deriva del punto flotante al sumar importes. */
+const redondear = (valor) => Math.round(valor * 100) / 100
+
+/**
+ * Une los ítems repetidos del carrito en uno solo.
+ *
+ * Sin esto, mandar el mismo producto dos veces con cantidad 3 esquiva el
+ * tope por ítem y descuenta stock en dos pasos independientes.
+ */
+function agruparItems(items) {
+  const porProducto = new Map()
+
+  for (const item of items) {
+    const actual = porProducto.get(item.producto) || 0
+    porProducto.set(item.producto, actual + item.cantidad)
+  }
+
+  return [...porProducto.entries()].map(([producto, cantidad]) => ({
+    producto,
+    cantidad,
+  }))
+}
+
+/**
+ * Reserva stock de forma atómica, producto por producto.
+ *
+ * La clave es que la condición `stock: { $gte: cantidad }` viaja DENTRO del
+ * update: MongoDB garantiza que la lectura y la escritura de un documento son
+ * atómicas, así que dos personas comprando la última butaca al mismo tiempo no
+ * pueden ganar las dos. Leer el stock y después escribirlo en dos pasos
+ * separados sí permitiría esa carrera.
+ *
+ * Se eligió este mecanismo en lugar de una transacción porque funciona
+ * también contra un MongoDB standalone (las transacciones exigen replica set).
+ *
+ * Devuelve el documento PREVIO al descuento, que es la fuente de verdad de
+ * precio y nombre para el pedido.
+ */
+async function reservarStock(items) {
+  const reservados = []
+
   try {
-    const { items, direccionEnvio, notas } = req.body
-    
-    // Validar que haya items
-    if (!items || items.length === 0) {
-      return res.status(400).json({ 
-        mensaje: 'El pedido debe contener al menos un producto' 
-      })
+    for (const item of items) {
+      const producto = await Product.findOneAndUpdate(
+        { _id: item.producto, stock: { $gte: item.cantidad } },
+        { $inc: { stock: -item.cantidad } },
+        { new: false }
+      ).lean()
+
+      if (!producto) {
+        // O el producto no existe, o no alcanza el stock. Se distingue con
+        // una lectura extra para dar un mensaje útil.
+        const existe = await Product.findById(item.producto)
+          .select('nombre stock')
+          .lean()
+
+        throw existe
+          ? ApiError.conflict(
+              `Stock insuficiente para "${existe.nombre}". Disponible: ${existe.stock}, solicitado: ${item.cantidad}`
+            )
+          : ApiError.badRequest(
+              `El producto ${item.producto} no existe o fue dado de baja`
+            )
+      }
+
+      reservados.push({ producto, cantidad: item.cantidad })
     }
 
-    // Validar dirección de envío
-    if (!direccionEnvio || direccionEnvio.trim() === '') {
-      return res.status(400).json({ 
-        mensaje: 'La dirección de envío es obligatoria' 
-      })
-    }
+    return reservados
+  } catch (error) {
+    // Compensación: lo ya descontado se devuelve. Sin esto, un pedido que
+    // falla a la mitad deja stock "fantasma" reservado para siempre.
+    await liberarStock(reservados)
+    throw error
+  }
+}
 
-    // Calcular el total
-    const total = items.reduce((sum, item) => {
-      return sum + (item.precio * item.cantidad)
-    }, 0)
+async function liberarStock(reservados) {
+  await Promise.all(
+    reservados.map(({ producto, cantidad }) =>
+      Product.updateOne({ _id: producto._id }, { $inc: { stock: cantidad } })
+    )
+  )
+}
 
-    // Crear el pedido asociado al usuario autenticado
-    const order = new Order({
-      usuario: req.user.id, // Viene del middleware de autenticación
-      items,
+// @desc    Crear un pedido
+// @route   POST /api/orders
+// @access  Privado
+exports.createOrder = asyncHandler(async (req, res) => {
+  const { items, direccionEnvio, notas } = req.body
+
+  const itemsAgrupados = agruparItems(items)
+  const reservados = await reservarStock(itemsAgrupados)
+
+  try {
+    // ────────────────────────────────────────────────────────────────
+    // ACÁ ESTÁ EL PUNTO. `precio`, `nombre` e `imagenUrl` salen del
+    // documento de la base, NO del request. El cliente solo pudo elegir
+    // QUÉ producto y CUÁNTAS unidades; el valor lo pone el servidor.
+    // ────────────────────────────────────────────────────────────────
+    const itemsPedido = reservados.map(({ producto, cantidad }) => ({
+      producto: producto._id,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      imagenUrl: producto.imagenUrl || '',
+      cantidad,
+    }))
+
+    const total = redondear(
+      itemsPedido.reduce((sum, item) => sum + item.precio * item.cantidad, 0)
+    )
+
+    const order = await Order.create({
+      usuario: req.user.id,
+      items: itemsPedido,
       total,
-      direccionEnvio: direccionEnvio.trim(),
-      notas
+      direccionEnvio,
+      notas,
     })
-
-    await order.save()
-
-    // Poblar la información del usuario
-    await order.populate('usuario', 'nombre email')
 
     res.status(201).json({
-      mensaje: 'Pedido creado exitosamente',
-      pedido: order
+      message: 'Pedido creado exitosamente',
+      data: serializeOrder(order),
     })
   } catch (error) {
-    console.error('Error creando pedido:', error)
-    res.status(500).json({ 
-      mensaje: error.message || 'Error al crear el pedido' 
-    })
+    await liberarStock(reservados)
+    throw error
   }
-}
+})
 
-// @desc    Obtener pedidos del usuario autenticado
+// @desc    Pedidos del usuario autenticado
 // @route   GET /api/orders/mis-pedidos
-// @access  Private
-exports.getUserOrders = async (req, res, next) => {
-  try {
-    const orders = await Order.find({ usuario: req.user.id })
-      .sort({ createdAt: -1 }) // Más recientes primero
-      .populate('usuario', 'nombre email')
+// @access  Privado
+exports.getUserOrders = asyncHandler(async (req, res) => {
+  const { page, limit, estado } = validated(req, 'query')
 
-    res.json({
-      count: orders.length,
-      pedidos: orders
-    })
-  } catch (error) {
-    console.error('Error obteniendo pedidos:', error)
-    res.status(500).json({ 
-      mensaje: error.message || 'Error al obtener los pedidos' 
-    })
-  }
-}
+  const filtro = { usuario: req.user.id }
+  if (estado) filtro.estado = estado
 
-// @desc    Obtener un pedido específico del usuario
-// @route   GET /api/orders/:id
-// @access  Private
-exports.getOrderById = async (req, res, next) => {
-  try {
-    const order = await Order.findById(req.params.id)
-      .populate('usuario', 'nombre email')
-      .populate('items.producto')
-
-    if (!order) {
-      return res.status(404).json({ message: 'Pedido no encontrado' })
-    }
-
-    // Verificar que el pedido pertenezca al usuario autenticado
-    if (order.usuario._id.toString() !== req.user.id) {
-      return res.status(403).json({ 
-        message: 'No tienes permiso para ver este pedido' 
-      })
-    }
-
-    res.json({ order })
-  } catch (error) {
-    console.error('Error obteniendo pedido:', error)
-    next(error)
-  }
-}
-
-// @desc    Actualizar estado de un pedido (solo admin)
-// @route   PUT /api/orders/:id/estado
-// @access  Private/Admin
-exports.updateOrderStatus = async (req, res, next) => {
-  try {
-    const { estado } = req.body
-    
-    const validEstados = ['pendiente', 'procesando', 'enviado', 'entregado', 'cancelado']
-    if (!validEstados.includes(estado)) {
-      return res.status(400).json({ 
-        message: 'Estado inválido' 
-      })
-    }
-
-    const order = await Order.findById(req.params.id)
-    
-    if (!order) {
-      return res.status(404).json({ message: 'Pedido no encontrado' })
-    }
-
-    order.estado = estado
-    await order.save()
-
-    res.json({
-      message: 'Estado del pedido actualizado',
-      order
-    })
-  } catch (error) {
-    console.error('Error actualizando pedido:', error)
-    next(error)
-  }
-}
-
-// @desc    Obtener todos los pedidos (solo admin)
-// @route   GET /api/orders/admin/all
-// @access  Private/Admin
-exports.getAllOrders = async (req, res, next) => {
-  try {
-    const orders = await Order.find()
+  const [orders, total] = await Promise.all([
+    Order.find(filtro)
       .sort({ createdAt: -1 })
-      .populate('usuario', 'nombre email')
+      .skip(skipFor({ page, limit }))
+      .limit(limit)
+      .lean(),
+    Order.countDocuments(filtro),
+  ])
 
-    res.json({
-      count: orders.length,
-      orders
-    })
-  } catch (error) {
-    console.error('Error obteniendo todos los pedidos:', error)
-    next(error)
+  res.json({
+    data: orders.map(serializeOrder),
+    meta: buildMeta({ page, limit, total }),
+  })
+})
+
+// @desc    Obtener un pedido
+// @route   GET /api/orders/:id
+// @access  Privado (dueño o admin)
+exports.getOrderById = asyncHandler(async (req, res) => {
+  const { id } = validated(req, 'params')
+
+  const order = await Order.findById(id).populate('usuario', 'nombre email role')
+  if (!order) throw ApiError.notFound('Pedido no encontrado')
+
+  const ownerId = order.usuario?._id?.toString() ?? order.usuario?.toString()
+  const esDueno = ownerId === req.user.id
+  const esAdmin = req.user.role === 'admin'
+
+  if (!esDueno && !esAdmin) {
+    throw ApiError.forbidden('No tenés permiso para ver este pedido')
   }
-}
+
+  res.json({ data: serializeOrder(order) })
+})
+
+// @desc    Cambiar el estado de un pedido
+// @route   PUT /api/orders/:id/estado
+// @access  Privado / Admin
+exports.updateOrderStatus = asyncHandler(async (req, res) => {
+  const { id } = validated(req, 'params')
+  const { estado } = req.body
+
+  const order = await Order.findById(id)
+  if (!order) throw ApiError.notFound('Pedido no encontrado')
+
+  const estadoAnterior = order.estado
+  if (estadoAnterior === estado) {
+    return res.json({
+      message: 'El pedido ya estaba en ese estado',
+      data: serializeOrder(order),
+    })
+  }
+
+  // Cancelar devuelve el stock a la góndola. Si no, cada cancelación
+  // dejaría unidades sin vender marcadas como vendidas.
+  if (estado === 'cancelado' && estadoAnterior !== 'cancelado') {
+    await liberarStock(
+      order.items.map((item) => ({
+        producto: { _id: item.producto },
+        cantidad: item.cantidad,
+      }))
+    )
+  }
+
+  order.estado = estado
+  await order.save()
+
+  res.json({
+    message: `Pedido actualizado a "${estado}"`,
+    data: serializeOrder(order),
+  })
+})
+
+// @desc    Listar todos los pedidos
+// @route   GET /api/orders/admin/all
+// @access  Privado / Admin
+exports.getAllOrders = asyncHandler(async (req, res) => {
+  const { page, limit, estado } = validated(req, 'query')
+
+  const filtro = {}
+  if (estado) filtro.estado = estado
+
+  const [orders, total] = await Promise.all([
+    Order.find(filtro)
+      .sort({ createdAt: -1 })
+      .skip(skipFor({ page, limit }))
+      .limit(limit)
+      .populate('usuario', 'nombre email role')
+      .lean(),
+    Order.countDocuments(filtro),
+  ])
+
+  res.json({
+    data: orders.map(serializeOrder),
+    meta: buildMeta({ page, limit, total }),
+  })
+})

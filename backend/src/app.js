@@ -1,136 +1,123 @@
-require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
+const cookieParser = require('cookie-parser')
 const mongoose = require('mongoose')
+
+const { env } = require('./config')
+const ApiError = require('./utils/ApiError')
+const { createMongoSanitizer } = require('./middleware/sanitize')
+const { limiters } = require('./middleware/rateLimit')
+const {
+  notFoundHandler,
+  createErrorHandler,
+} = require('./middleware/errorHandler')
+
 const productosRoutes = require('./routes/productos.routes')
 const authRoutes = require('./routes/auth.routes')
 const ordersRoutes = require('./routes/orders.routes')
+const contactRoutes = require('./routes/contact.routes')
+const asistenteRoutes = require('./routes/asistente.routes')
 
-const app = express()
-const PORT = process.env.PORT || 5000
+function createApp() {
+  const app = express()
 
-// Configuración de CORS para permitir peticiones desde frontend
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:3000',
-  'https://vermillion-gnome-5f2469.netlify.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
+  // Render (y cualquier PaaS) pone un proxy delante. Sin esto, el rate
+  // limiter ve siempre la IP del proxy y limita a todos los usuarios como
+  // si fueran uno solo. El `1` significa "confiá en un único proxy":
+  // `true` permitiría falsear la IP con un header X-Forwarded-For.
+  app.set('trust proxy', 1)
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir requests sin origin (como mobile apps o curl)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      console.warn(`CORS: Origen no permitido: ${origin}`);
-      callback(null, true); // Permitir de todos modos en desarrollo
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  app.disable('x-powered-by')
 
-app.use(express.json())
+  // Cabeceras de seguridad (HSTS, X-Content-Type-Options, frameguard, etc.).
+  app.use(
+    helmet({
+      // La API sirve JSON, no HTML: la CSP la aplica el hosting del frontend.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    })
+  )
 
-// Prefijo API
-app.use('/api/productos', productosRoutes)
-// Alias para ruta de admin
-app.use('/admin/crear-producto', productosRoutes)
-// Rutas de autenticación
-app.use('/api/auth', authRoutes)
-// Rutas de pedidos
-app.use('/api/orders', ordersRoutes)
+  // ── CORS ────────────────────────────────────────────────────────────────
+  // La versión anterior tenía una whitelist decorativa: la rama `else`
+  // llamaba igual a `callback(null, true)`, así que aceptaba cualquier
+  // origen. Esto sí rechaza.
+  app.use(
+    cors({
+      origin(origin, callback) {
+        // Sin `Origin` = no es una petición de navegador (curl, health check,
+        // apps móviles). CORS no aplica y no hay nada que proteger acá.
+        if (!origin) return callback(null, true)
 
-app.get('/', (req, res) => {
-  res.send('<h1>Bienvenido a la API de Mueblería Jota</h1><p>Endpoints disponibles:</p><ul><li><a href="/api/productos">/api/productos</a></li><li>/api/auth/register (POST)</li><li>/api/auth/login (POST)</li><li>/api/auth/profile (GET)</li><li>/api/orders (POST - Protegido)</li><li>/api/orders/mis-pedidos (GET - Protegido)</li></ul>');
-});
+        if (env.corsOrigins.includes(origin)) return callback(null, true)
 
-// Error handler simple
-app.use((err, req, res, next) => {
-  console.error('Error:', err)
-  
-  // Si ya se enviaron los headers, delegar al manejador por defecto
-  if (res.headersSent) {
-    return next(err)
-  }
-  
-  // Asegurar que siempre se envíe JSON
-  res.status(err.status || 500).json({ 
-    mensaje: err.message || 'Error interno del servidor',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        // Un error pelado saldría como 500. Esto es un rechazo deliberado,
+        // y el status tiene que decirlo.
+        return callback(ApiError.forbidden(`Origen no permitido: ${origin}`))
+      },
+      // Necesario para que viaje la cookie httpOnly del refresh token.
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      maxAge: 86_400,
+    })
+  )
+
+  // Techo explícito al tamaño del body: el default de Express son 100kb,
+  // pero dejarlo escrito evita sorpresas si mañana alguien lo cambia.
+  app.use(express.json({ limit: '100kb' }))
+  app.use(cookieParser())
+  app.use(createMongoSanitizer())
+  app.use('/api', limiters.general)
+
+  // ── Rutas ───────────────────────────────────────────────────────────────
+  app.get('/health', (req, res) => {
+    const dbConectada = mongoose.connection.readyState === 1
+    res.status(dbConectada ? 200 : 503).json({
+      status: dbConectada ? 'OK' : 'DEGRADED',
+      timestamp: new Date().toISOString(),
+      mongodb: dbConectada ? 'connected' : 'disconnected',
+      uptime: Math.round(process.uptime()),
+    })
   })
-})
 
-// Health check endpoint para mantener el servicio activo
-app.get('/health', (req, res) => {
-  const status = {
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  }
-  res.json(status)
-})
-
-// Conexión a MongoDB con configuración optimizada
-async function start() {
-  const mongoUri = process.env.MONGO_URI
-  if (!mongoUri) {
-    console.warn('MONGO_URI no configurada. El backend arrancará pero sin persistencia (use mock en frontend).')
-    app.listen(PORT, () => console.log(`Servidor iniciado en puerto ${PORT} (sin DB)`))
-    return
-  }
-
-  try {
-    console.log('Iniciando conexión a MongoDB...')
-    const startTime = Date.now()
-    
-    await mongoose.connect(mongoUri, {
-      // Timeouts optimizados
-      serverSelectionTimeoutMS: 5000, // 5 segundos para seleccionar servidor
-      socketTimeoutMS: 45000, // 45 segundos para operaciones de socket
-      
-      // Pool de conexiones
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      
-      // Heartbeat para mantener conexión
-      heartbeatFrequencyMS: 10000,
-      
-      // Retry
-      retryWrites: true,
-      retryReads: true
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'API Mueblería Hermanos Jota',
+      version: 2,
+      endpoints: {
+        productos: 'GET /api/productos',
+        producto: 'GET /api/productos/:id',
+        registro: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        refresh: 'POST /api/auth/refresh',
+        logout: 'POST /api/auth/logout',
+        perfil: 'GET /api/auth/profile',
+        crearPedido: 'POST /api/orders',
+        misPedidos: 'GET /api/orders/mis-pedidos',
+        contacto: 'POST /api/contacto',
+        asistente: 'POST /api/asistente',
+      },
     })
-    
-    const connectionTime = Date.now() - startTime
-    console.log(`✓ Conectado a MongoDB en ${connectionTime}ms`)
-    
-    app.listen(PORT, () => {
-      console.log(`✓ Servidor iniciado en puerto ${PORT}`)
-      console.log(`✓ Health check disponible en: http://localhost:${PORT}/health`)
-    })
-  } catch (err) {
-    console.error('✗ Error conectando a MongoDB:', err.message)
-    console.error('Detalles:', err)
-    process.exit(1)
-  }
+  })
+
+  app.use('/api/productos', productosRoutes)
+  app.use('/api/auth', authRoutes)
+  app.use('/api/orders', ordersRoutes)
+  app.use('/api/contacto', contactRoutes)
+  app.use('/api/asistente', asistenteRoutes)
+
+  // El alias `app.use('/admin/crear-producto', productosRoutes)` se eliminó:
+  // montaba el router ENTERO en una segunda URL pública (incluido el DELETE),
+  // y el frontend nunca lo usó.
+
+  // ── Cierre de la cadena ─────────────────────────────────────────────────
+  // El 404 y el error handler van últimos, siempre y en este orden.
+  app.use(notFoundHandler)
+  app.use(createErrorHandler({ isProduction: env.isProduction }))
+
+  return app
 }
 
-// Manejo de eventos de conexión
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠ MongoDB desconectado')
-})
-
-mongoose.connection.on('reconnected', () => {
-  console.log('✓ MongoDB reconectado')
-})
-
-mongoose.connection.on('error', (err) => {
-  console.error('✗ Error en conexión MongoDB:', err.message)
-})
-
-start()
+module.exports = { createApp }

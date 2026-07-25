@@ -1,68 +1,57 @@
 import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useUI } from '../contexts/UIContext'
 import ModernLayout from '../components/ModernLayout'
 
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
+  const { toast } = useUI()
+
+  const [formData, setFormData] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
 
-  // Obtener la ruta a la que el usuario intentaba acceder antes del login
-  const from = location.state?.from?.pathname || '/'
+  const destino = location.state?.from?.pathname || '/'
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    // Limpiar error cuando el usuario empieza a escribir
+  const handleChange = (evento) => {
+    const { name, value } = evento.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
     if (error) setError(null)
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (evento) => {
+    evento.preventDefault()
     setError(null)
     setLoading(true)
 
     try {
-      await login(formData)
-      alert('¡Bienvenido de vuelta!')
-      navigate(from, { replace: true })
+      const usuario = await login(formData)
+      toast.success(`¡Bienvenido de vuelta, ${usuario.nombre.split(' ')[0]}!`)
+      navigate(destino, { replace: true })
     } catch (err) {
-      setError(err.message || 'Error al iniciar sesión')
-      console.error('Error en login:', err)
+      setError(err.detalle || err.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <ModernLayout title="Iniciar Sesión">
+    <ModernLayout title="Iniciar sesión">
       <div className="auth-container">
         <div className="auth-card">
-          <h2 className="auth-title">Iniciar Sesión</h2>
-          <p className="auth-subtitle">
-            Bienvenido de vuelta a Hermanos Jota
-          </p>
-          
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          <h1 className="auth-title">Iniciar sesión</h1>
+          <p className="auth-subtitle">Bienvenido de vuelta a Hermanos Jota</p>
 
           {location.state?.message && (
-            <div className="info-message">
-              {location.state.message}
+            <div className="info-message">{location.state.message}</div>
+          )}
+
+          {error && (
+            <div className="error-message" role="alert">
+              {error}
             </div>
           )}
 
@@ -95,20 +84,20 @@ function Login() {
               />
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-full-width"
               disabled={loading}
             >
-              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+              {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              ¿No tienes cuenta?{' '}
+              ¿No tenés cuenta?{' '}
               <Link to="/registro" className="auth-link">
-                Regístrate aquí
+                Registrate acá
               </Link>
             </p>
           </div>
