@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import AsistenteService from '../services/chatService'
 import './AsistenteWidget.css'
 
@@ -9,12 +10,29 @@ const SALUDO = {
     'garantía, pagos y cuidado de los muebles. ¿Qué querés saber?',
 }
 
-const SUGERENCIAS = [
+// Solo para el primer mensaje, antes de que el usuario pregunte algo (todavía
+// no hay sugerencias del bot). Después de cada respuesta, las sugerencias son
+// las que el propio RAG generó para ESA pregunta (m.sugerencias).
+const SUGERENCIAS_INICIALES = [
   '¿Hacen envíos al interior?',
   '¿Qué garantía tienen los muebles?',
   '¿Puedo pagar en cuotas?',
 ]
 
+const formatearPrecio = (precio) =>
+  typeof precio === 'number' ? precio.toLocaleString('es-AR') : '—'
+
+/**
+ * Asistente flotante (RAG).
+ *
+ * ⚠️ Se monta en `App.jsx`, hermano de `<Routes>`, NO dentro de ModernLayout.
+ *
+ * Estuvo dentro del layout, y como cada página renderiza su propio
+ * `<ModernLayout>`, al navegar React desmontaba este componente entero y lo
+ * volvía a montar: la conversación se perdía en cada click del menú. Si algún
+ * día vuelve a colgar de una página, el bug vuelve con él —hay tests en
+ * `AsistentePersistencia.test.jsx` que lo cazan.
+ */
 function AsistenteWidget() {
   const [abierto, setAbierto] = useState(false)
   const [mensajes, setMensajes] = useState([SALUDO])
@@ -37,8 +55,12 @@ function AsistenteWidget() {
     setCargando(true)
 
     try {
-      const { respuesta, fuentes } = await AsistenteService.preguntar(pregunta)
-      setMensajes((prev) => [...prev, { de: 'bot', texto: respuesta, fuentes }])
+      const { respuesta, fuentes, sugerencias, productos } =
+        await AsistenteService.preguntar(pregunta)
+      setMensajes((prev) => [
+        ...prev,
+        { de: 'bot', texto: respuesta, fuentes, sugerencias, productos },
+      ])
     } catch (error) {
       setMensajes((prev) => [
         ...prev,
@@ -59,9 +81,6 @@ function AsistenteWidget() {
     e.preventDefault()
     preguntar()
   }
-
-  // Fuentes únicas por documento, para no repetir el mismo archivo.
-  const fuentesUnicas = (fuentes) => [...new Set((fuentes || []).map((f) => f.fuente))]
 
   return (
     <>
@@ -94,24 +113,68 @@ function AsistenteWidget() {
           </div>
 
           <div className="asistente-mensajes">
-            {mensajes.map((m, i) => (
-              <div
-                key={i}
-                className={`asistente-msg ${m.de}${m.error ? ' error' : ''}`}
-              >
-                <p>{m.texto}</p>
-                {fuentesUnicas(m.fuentes).length > 0 && (
-                  <p className="asistente-fuentes">
-                    Fuente: {fuentesUnicas(m.fuentes).join(', ')}
-                  </p>
-                )}
-              </div>
-            ))}
+            {mensajes.map((m, i) => {
+              const esUltimoMensaje = i === mensajes.length - 1
+              return (
+                <div
+                  key={i}
+                  className={`asistente-msg ${m.de}${m.error ? ' error' : ''}`}
+                >
+                  <p>{m.texto}</p>
 
-            {/* Sugerencias solo al inicio, para invitar a preguntar. */}
+                  {m.productos?.length > 0 && (
+                    <div className="asistente-productos">
+                      {/*
+                        `<Link>`, NO `<a href>`.
+
+                        Con `<a href>` esto era una navegación de página
+                        completa: el navegador tiraba la SPA abajo y la
+                        recargaba de cero. No solo se perdía la conversación
+                        —también el access token, que vive en memoria, y había
+                        que rehacer el refresh. Un click en una recomendación
+                        del bot costaba un reinicio entero de la aplicación.
+                      */}
+                      {m.productos.map((p) => (
+                        <Link
+                          key={p.id}
+                          className={`asistente-producto${p.stock === 0 ? ' sin-stock' : ''}`}
+                          to={`/productos/${p.id}`}
+                        >
+                          {p.imagenUrl && <img src={p.imagenUrl} alt={p.nombre} />}
+                          <div className="asistente-producto-info">
+                            <span className="asistente-producto-nombre">{p.nombre}</span>
+                            <span className="asistente-producto-precio">
+                              ${formatearPrecio(p.precio)}
+                            </span>
+                            {p.stock === 0 && (
+                              <span className="asistente-producto-sinstock">Sin stock</span>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sugerencias solo en el último mensaje del bot: son la
+                      invitación a seguir la conversación, no un historial. */}
+                  {m.de === 'bot' && esUltimoMensaje && m.sugerencias?.length > 0 && (
+                    <div className="asistente-sugerencias">
+                      {m.sugerencias.map((s) => (
+                        <button key={s} type="button" onClick={() => preguntar(s)}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Sugerencias fijas solo antes de la primera pregunta: todavía no
+                hay sugerencias generadas por el RAG para invitar a preguntar. */}
             {mensajes.length === 1 && (
               <div className="asistente-sugerencias">
-                {SUGERENCIAS.map((s) => (
+                {SUGERENCIAS_INICIALES.map((s) => (
                   <button key={s} type="button" onClick={() => preguntar(s)}>
                     {s}
                   </button>

@@ -5,8 +5,10 @@ import { formatearPrecio } from '../../constants'
  * servicios. Se puede renderizar en un test sin montar media aplicación.
  */
 function CartItem({ item, onCambiarCantidad, onEliminar }) {
-  const sinStockRestante =
-    typeof item.stock === 'number' && item.cantidad >= item.stock
+  // `tope` reemplazó a `stock`: la API ya no devuelve la cantidad exacta, así
+  // que el límite sale de `unidadesRestantes` (solo cuando quedan pocas) o del
+  // máximo por ítem. Ver `topeDe` en CartContext.
+  const enElTope = typeof item.tope === 'number' && item.cantidad >= item.tope
 
   return (
     <li className="cart-item">
@@ -42,8 +44,8 @@ function CartItem({ item, onCambiarCantidad, onEliminar }) {
         <button
           type="button"
           onClick={() => onCambiarCantidad(item.id, item.cantidad + 1)}
-          disabled={sinStockRestante}
-          title={sinStockRestante ? 'No hay más stock disponible' : undefined}
+          disabled={enElTope}
+          title={enElTope ? 'No podés agregar más unidades' : undefined}
           aria-label={`Agregar una unidad de ${item.nombre}`}
         >
           +

@@ -7,6 +7,7 @@ const { idParams } = require('../schemas/common')
 const {
   createOrderSchema,
   updateOrderStatusSchema,
+  cancelOrderSchema,
   listOrdersQuery,
 } = require('../schemas/order.schema')
 
@@ -40,6 +41,24 @@ router.post(
   limiters.write,
   validate(createOrderSchema),
   ordersController.createOrder
+)
+
+/**
+ * Cancelar NO lleva `requireRole`: es la ruta del cliente para su propio
+ * pedido, y el admin la usa también. Quién puede cancelar qué —el dueño en
+ * estados cancelables, el admin en más estados— lo decide el controller, que
+ * es el único que conoce el pedido. Un `requireRole` acá dejaría afuera al
+ * cliente; no ponerlo NO significa que no haya control de permisos.
+ *
+ * Lleva `limiters.write` porque devuelve stock: es una escritura con
+ * consecuencias sobre el inventario, no una lectura.
+ */
+router.post(
+  '/:id/cancelar',
+  limiters.write,
+  validate(idParams, 'params'),
+  validate(cancelOrderSchema),
+  ordersController.cancelOrder
 )
 
 router.get(

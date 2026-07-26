@@ -37,6 +37,27 @@ const envSchema = z
     // si falta, el endpoint /api/asistente devuelve 503 en vez de tumbar el
     // arranque del servidor (el asistente es una función accesoria, no crítica).
     RAG_API_URL: z.string().url().optional(),
+
+    // ── Recuperación de contraseña ──────────────────────────────────────
+    // Base del frontend: es lo que se antepone al link del mail de reseteo.
+    // Tiene que apuntar al CLIENTE (Netlify), no a la API: el usuario abre una
+    // pantalla de React, no un endpoint.
+    APP_URL: z.string().url().optional(),
+
+    // Vida del token de recuperación. Una hora es el compromiso habitual:
+    // suficiente para que alguien lea el mail sin apuro, corto para que un
+    // link filtrado en un historial o un log deje de servir rápido.
+    PASSWORD_RESET_TTL_MINUTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(1440, 'Un token de recuperación no debería durar más de un día')
+      .default(60),
+
+    // Proveedor de mail. `console` imprime el mail en el log del servidor
+    // (desarrollo), `noop` lo descarta avisando. Hoy NO hay proveedor real:
+    // ver docs/MAIL.md.
+    MAIL_DRIVER: z.enum(['console', 'noop']).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
@@ -87,6 +108,25 @@ function loadEnv(source = process.env) {
     // En desarrollo, por defecto apunta al RAG corriendo local (uvicorn en :8000).
     // En producción hay que setear RAG_API_URL explícitamente.
     ragApiUrl: env.RAG_API_URL || (isProduction ? '' : 'http://localhost:8000'),
+
+    // Base del link de recuperación. En desarrollo cae al Vite local; en
+    // producción, al primer origen permitido por CORS, que es el frontend real.
+    // Si no hay ninguno configurado queda vacío y el controller lo detecta.
+    appUrl: (
+      env.APP_URL ||
+      (isProduction ? configuredOrigins[0] || '' : 'http://localhost:5173')
+    ).replace(/\/$/, ''),
+
+    /**
+     * En producción el default es `noop`, NO `console`.
+     *
+     * Imprimir un link de recuperación de contraseña en el log de producción
+     * sería regalar acceso a cualquiera que pueda leer los logs —el panel de
+     * Render, un servicio de agregación, un compañero con acceso de lectura—.
+     * Un mail que no sale es un problema visible; un token en un log es una
+     * puerta abierta que nadie mira.
+     */
+    mailDriver: env.MAIL_DRIVER || (isProduction ? 'noop' : 'console'),
   }
 }
 

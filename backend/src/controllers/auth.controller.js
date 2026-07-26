@@ -1,11 +1,14 @@
+const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
+const PasswordResetToken = require('../models/PasswordResetToken')
 const ApiError = require('../utils/ApiError')
 const asyncHandler = require('../utils/asyncHandler')
 const { serializeUser } = require('../serializers')
-const { tokens } = require('../config')
-const { REFRESH_COOKIE_NAME } = require('../utils/tokens')
+const { env, tokens, mailer } = require('../config')
+const { mailRecuperacion } = require('../services/mailer')
+const { REFRESH_COOKIE_NAME, hashToken } = require('../utils/tokens')
 
 // Máximo de sesiones simultáneas por usuario (una entrada por dispositivo).
 const MAX_SESIONES = 5
@@ -202,6 +205,177 @@ exports.verifyToken = asyncHandler(async (req, res) => {
   if (!user) throw ApiError.unauthorized('Usuario no encontrado')
 
   res.json({ data: { valid: true, user: serializeUser(user) } })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RECUPERACIÓN DE CONTRASEÑA
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Mensaje idéntico exista o no la cuenta.
+ *
+ * Es UNA sola constante y no dos strings iguales escritos en dos ramas: si
+ * fueran dos, un día alguien retoca uno y la diferencia vuelve a delatar qué
+ * emails están registrados. La constante hace que la propiedad de seguridad
+ * sea imposible de romper por descuido.
+ */
+const RESPUESTA_RECUPERACION =
+  'Si el email corresponde a una cuenta registrada, te enviamos un link para ' +
+  'restablecer la contraseña. Revisá tu bandeja de entrada y el correo no deseado.'
+
+/**
+ * Genera el token que viaja en el link.
+ *
+ * 32 bytes de `randomBytes` = 256 bits de entropía. No es adivinable por
+ * fuerza bruta ni predecible: `Math.random()` acá sería un agujero, porque su
+ * generador no es criptográfico y su estado se puede reconstruir observando
+ * unas pocas salidas.
+ *
+ * `base64url` en vez de `hex`: mismo contenido, string más corto, y sin
+ * caracteres que se rompan al pegarlos en una URL.
+ */
+function generarTokenRecuperacion() {
+  return crypto.randomBytes(32).toString('base64url')
+}
+
+// @desc    Pedir un link para restablecer la contraseña
+// @route   POST /api/auth/forgot-password
+// @access  Público (con rate limit)
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body
+
+  const user = await User.findOne({ email })
+
+  // ────────────────────────────────────────────────────────────────────────
+  // NO SE REVELA SI LA CUENTA EXISTE.
+  //
+  // Un 404 acá convierte este endpoint en un oráculo de enumeración: probás
+  // mil emails, anotás cuáles dan 200, y ya tenés la lista de clientes de la
+  // mueblería. Sirve para phishing dirigido y para credential stuffing.
+  //
+  // Así que cuando el email no existe se sale por el MISMO return, con el
+  // MISMO texto. Desde afuera los dos casos son indistinguibles.
+  // ────────────────────────────────────────────────────────────────────────
+  if (!user) {
+    return res.json({ message: RESPUESTA_RECUPERACION })
+  }
+
+  // Un pedido nuevo invalida los anteriores. Si alguien pide tres links y usa
+  // el primero, los otros dos no deberían seguir sirviendo: son llaves de la
+  // misma cerradura circulando por ahí.
+  await PasswordResetToken.updateMany(
+    { usuario: user._id, usedAt: null },
+    { $set: { usedAt: new Date() } }
+  )
+
+  const token = generarTokenRecuperacion()
+  const minutos = env.PASSWORD_RESET_TTL_MINUTES
+
+  await PasswordResetToken.create({
+    usuario: user._id,
+    // Se guarda el HASH. Si mañana se filtra la base, esa columna no sirve
+    // para entrar a ninguna cuenta: del hash no se vuelve al token.
+    tokenHash: hashToken(token),
+    expiresAt: new Date(Date.now() + minutos * 60 * 1000),
+    solicitadoDesde: req.ip || '',
+  })
+
+  const link = `${env.appUrl}/restablecer-password?token=${token}`
+
+  const { asunto, texto } = mailRecuperacion({
+    nombre: user.nombre.split(' ')[0],
+    link,
+    minutos,
+  })
+
+  // Un fallo del proveedor de mail NO puede cambiar la respuesta: si el error
+  // se propagara, un 500 para un email existente y un 200 para uno inexistente
+  // volverían a delatar cuáles están registrados. Se loguea y se sigue.
+  try {
+    await mailer.enviar({ para: user.email, asunto, texto })
+  } catch (error) {
+    console.error('[auth] Falló el envío del mail de recuperación:', error.message)
+  }
+
+  res.json({ message: RESPUESTA_RECUPERACION })
+})
+
+// @desc    Definir una contraseña nueva con el token del mail
+// @route   POST /api/auth/reset-password
+// @access  Público (con rate limit)
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body
+
+  // Se busca por hash: el token en claro nunca estuvo en la base, así que la
+  // única forma de encontrarlo es rehashear lo que trajo el usuario.
+  const registro = await PasswordResetToken.findOne({
+    tokenHash: hashToken(token),
+  })
+
+  const ahora = new Date()
+
+  /**
+   * Un solo mensaje para las tres formas de fallar —no existe, ya se usó,
+   * venció— y un solo status.
+   *
+   * Distinguir "este token ya se usó" de "este token no existe" le confirma a
+   * quien tenga un link viejo que ese link fue real y de quién. No hay nada
+   * que el usuario legítimo pueda hacer distinto según el caso: en los tres
+   * la acción es pedir un link nuevo.
+   */
+  const invalido = () =>
+    ApiError.badRequest(
+      'El link no es válido o ya venció. Pedí uno nuevo desde "Olvidé mi contraseña".'
+    )
+
+  if (!registro) throw invalido()
+  if (registro.usedAt) throw invalido()
+  if (registro.expiresAt <= ahora) throw invalido()
+
+  const user = await User.findById(registro.usuario).select('+refreshTokens')
+  if (!user) throw invalido()
+
+  // ────────────────────────────────────────────────────────────────────────
+  // EL CONSUMO VA PRIMERO, Y ES CONDICIONAL.
+  //
+  // `usedAt: null` dentro del filtro hace que dos requests simultáneos con el
+  // mismo token no puedan ganar los dos: uno matchea, el otro recibe `null`.
+  // Mismo patrón que el claim de la cancelación de pedidos.
+  //
+  // Y va ANTES de cambiar la contraseña a propósito: si algo falla después,
+  // el token queda quemado igual. Un token que sobrevive a un error es un
+  // token reutilizable.
+  // ────────────────────────────────────────────────────────────────────────
+  const consumido = await PasswordResetToken.findOneAndUpdate(
+    { _id: registro._id, usedAt: null },
+    { $set: { usedAt: ahora } }
+  )
+
+  if (!consumido) throw invalido()
+
+  user.password = password // el hook pre('save') lo hashea
+  user.passwordChangedAt = ahora
+
+  /**
+   * Se cierran TODAS las sesiones abiertas.
+   *
+   * Es el punto del flujo, no un extra. El caso de uso real de "olvidé mi
+   * contraseña" incluye "me robaron la cuenta": si el atacante tiene un
+   * refresh token vigente, cambiar la contraseña sin revocar sesiones no lo
+   * echa de ningún lado y sigue adentro siete días más.
+   */
+  user.refreshTokens = []
+  await user.save()
+
+  // La sesión del propio navegador también muere: la cookie que quedó apunta
+  // a un refresh token que ya no existe.
+  tokens.clearRefreshCookie(res)
+
+  res.json({
+    message:
+      'Contraseña actualizada. Por seguridad se cerraron todas las sesiones: ' +
+      'iniciá sesión con tu contraseña nueva.',
+  })
 })
 
 exports.MAX_SESIONES = MAX_SESIONES

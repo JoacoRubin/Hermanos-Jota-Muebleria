@@ -15,6 +15,7 @@ const mongoose = require('mongoose')
 const { env } = require('./config')
 const { connectDatabase, disconnectDatabase } = require('./config/db')
 const Product = require('./models/Product')
+const StockMovement = require('./models/StockMovement')
 const User = require('./models/User')
 const productsSeed = require('./data/products.seed')
 
@@ -41,11 +42,36 @@ async function seedProductos() {
       )
     }
     await Product.deleteMany({})
+    // Los movimientos del catálogo viejo apuntan a productos que ya no
+    // existen: se limpian junto con ellos para que el libro mayor no quede
+    // con filas huérfanas de una carga que se descartó entera.
+    await StockMovement.deleteMany({})
     console.log(`${existentes} productos anteriores eliminados`)
   }
 
   const creados = await Product.insertMany(productsSeed)
-  console.log(`${creados.length} productos cargados correctamente`)
+
+  // El stock inicial es un movimiento como cualquier otro. Sin esto el libro
+  // mayor arranca descuadrado contra `Product.stock` desde el día uno, y el
+  // primer intento de auditar el inventario no cierra.
+  const movimientos = creados
+    .filter((producto) => producto.stock > 0)
+    .map((producto) => ({
+      producto: producto._id,
+      nombreProducto: producto.nombre,
+      cantidad: producto.stock,
+      motivo: 'reposicion',
+      usuario: null,
+      stockResultante: producto.stock,
+      nota: 'Carga inicial del catálogo (seed)',
+    }))
+
+  if (movimientos.length > 0) await StockMovement.insertMany(movimientos)
+
+  console.log(
+    `${creados.length} productos cargados correctamente ` +
+      `(${movimientos.length} movimientos de stock inicial asentados)`
+  )
 }
 
 async function seedAdmin() {

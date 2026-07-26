@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { CartProvider, useCart } from './CartContext'
+import { MAX_CANTIDAD_POR_ITEM } from '../constants'
 
 // El carrito depende de la sesión, pero no queremos montar el flujo real de
 // autenticación para probarlo: se controla el usuario desde el mock.
@@ -32,12 +33,30 @@ const renderCarrito = () =>
     </CartProvider>
   )
 
+/**
+ * La API ya NO devuelve `stock`: manda `stockStatus`, `disponible` y
+ * `unidadesRestantes` (este último solo cuando quedan pocas). El carrito topea
+ * con eso. Ver `topeDe` en CartContext.
+ */
 const SOFA = {
   id: 'p1',
   nombre: 'Sofá Patagonia',
   precio: 245000,
   imagenUrl: '/img.png',
-  stock: 3,
+  stockStatus: 'ultimas',
+  disponible: true,
+  unidadesRestantes: 3,
+}
+
+/** Producto con stock normal: la API no dice cuántos hay. */
+const MESA = {
+  id: 'p2',
+  nombre: 'Mesa Pampa',
+  precio: 180000,
+  imagenUrl: '/mesa.png',
+  stockStatus: 'disponible',
+  disponible: true,
+  unidadesRestantes: null,
 }
 
 beforeEach(() => {
@@ -64,11 +83,50 @@ describe('CartContext', () => {
     expect(screen.getByTestId('total-items')).toHaveTextContent('2')
   })
 
-  it('nunca deja superar el stock disponible', () => {
+  it('nunca deja superar las unidades que el servidor informó', () => {
     renderCarrito()
 
     act(() => globalThis.__cart.addToCart(SOFA))
     act(() => globalThis.__cart.updateQuantity('p1', 99))
+
+    expect(screen.getByTestId('total-items')).toHaveTextContent('3')
+  })
+
+  // ── Regresión del cambio de contrato ────────────────────────────────────
+  // Cuando la API dejó de mandar `stock`, el viejo `product.stock ?? Infinity`
+  // caía siempre en `Infinity` y el tope desaparecía: se podían cargar 500
+  // sillas. Ahora el techo es MAX_CANTIDAD_POR_ITEM.
+  it('topea en el máximo por ítem cuando no se conoce el stock', () => {
+    renderCarrito()
+
+    act(() => globalThis.__cart.addToCart(MESA))
+    act(() => globalThis.__cart.updateQuantity('p2', 9999))
+
+    expect(screen.getByTestId('total-items')).toHaveTextContent(
+      String(MAX_CANTIDAD_POR_ITEM)
+    )
+  })
+
+  it('no agrega nada de un producto agotado', () => {
+    renderCarrito()
+
+    act(() =>
+      globalThis.__cart.addToCart({
+        ...MESA,
+        disponible: false,
+        stockStatus: 'agotado',
+      })
+    )
+
+    expect(screen.getByTestId('total-items')).toHaveTextContent('0')
+  })
+
+  it('sumar de a uno tampoco supera el tope', () => {
+    renderCarrito()
+
+    for (let i = 0; i < 6; i++) {
+      act(() => globalThis.__cart.addToCart(SOFA))
+    }
 
     expect(screen.getByTestId('total-items')).toHaveTextContent('3')
   })

@@ -1,6 +1,7 @@
 const { z } = require('zod')
 const {
   ESTADOS_PEDIDO,
+  GRUPOS_MIS_PEDIDOS,
   MAX_CANTIDAD_POR_ITEM,
   MAX_ITEMS_POR_PEDIDO,
 } = require('../constants')
@@ -39,6 +40,21 @@ const createOrderSchema = z
   })
   .strict()
 
+/** Número de seguimiento y transportista. Los dos opcionales. */
+const seguimientoSchema = z
+  .object({
+    numero: z.string().trim().max(80).optional(),
+    transportista: z.string().trim().max(80).optional(),
+  })
+  .strict()
+
+/**
+ * El enum solo valida que el estado EXISTA. Que la transición sea alcanzable
+ * desde el estado actual lo decide `esTransicionValida` en el controller, y
+ * tiene que ser ahí: zod no conoce el estado actual del pedido, que está en
+ * la base. Validar la forma es trabajo del schema; validar la máquina de
+ * estados es trabajo del dominio.
+ */
 const updateOrderStatusSchema = z
   .object({
     estado: z.enum(ESTADOS_PEDIDO, {
@@ -46,11 +62,27 @@ const updateOrderStatusSchema = z
         message: `Estado inválido. Valores permitidos: ${ESTADOS_PEDIDO.join(', ')}`,
       }),
     }),
+    nota: z.string().trim().max(300).optional(),
+    seguimiento: seguimientoSchema.optional(),
+  })
+  .strict()
+
+const cancelOrderSchema = z
+  .object({
+    motivo: z.string().trim().max(300).optional().default(''),
   })
   .strict()
 
 const listOrdersQuery = paginationQuery.extend({
   estado: z.enum(ESTADOS_PEDIDO).optional(),
+  // Las pestañas de "Mis pedidos". El filtrado se hace en la base para que la
+  // paginación siga significando algo.
+  grupo: z.enum(Object.keys(GRUPOS_MIS_PEDIDOS)).optional(),
 })
 
-module.exports = { createOrderSchema, updateOrderStatusSchema, listOrdersQuery }
+module.exports = {
+  createOrderSchema,
+  updateOrderStatusSchema,
+  cancelOrderSchema,
+  listOrdersQuery,
+}

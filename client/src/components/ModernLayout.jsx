@@ -2,8 +2,21 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useUI } from '../contexts/UIContext'
-import AsistenteWidget from './AsistenteWidget'
 
+/**
+ * Cabecera, navegación y pie, compartidos por todas las pantallas.
+ *
+ * ⚠️ OJO CON QUÉ SE PONE ACÁ ADENTRO.
+ *
+ * Cada página renderiza su PROPIO `<ModernLayout>` en lugar de colgar de una
+ * ruta de layout con `<Outlet />`. Consecuencia: al navegar, React desmonta el
+ * layout de la página anterior y monta uno nuevo. Todo `useState` que viva
+ * dentro se pierde en cada click del menú.
+ *
+ * Para el header y el footer da igual: no tienen estado. Pero cualquier cosa
+ * que SÍ tenga que sobrevivir a la navegación —el asistente, por ejemplo— va
+ * en `App.jsx`, al lado de `<Routes>`, donde se monta una sola vez.
+ */
 function ModernLayout({ children, title }) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -65,12 +78,26 @@ function ModernLayout({ children, title }) {
                 👤 {user?.nombre?.split(' ')[0] || 'Mi perfil'}
               </Link>
               {isAdmin && (
-                <Link
-                  to="/admin/crear-producto"
-                  className={`nav-link ${isActive('/admin/crear-producto')}`}
-                >
-                  ➕ Crear producto
-                </Link>
+                <>
+                  <Link
+                    to="/admin/pedidos"
+                    className={`nav-link ${isActive('/admin/pedidos')}`}
+                  >
+                    📋 Pedidos
+                  </Link>
+                  <Link
+                    to="/admin/stock"
+                    className={`nav-link ${isActive('/admin/stock')}`}
+                  >
+                    📊 Stock
+                  </Link>
+                  <Link
+                    to="/admin/crear-producto"
+                    className={`nav-link ${isActive('/admin/crear-producto')}`}
+                  >
+                    ➕ Crear producto
+                  </Link>
+                </>
               )}
               <button
                 type="button"
@@ -101,9 +128,6 @@ function ModernLayout({ children, title }) {
           © 2025
         </p>
       </footer>
-
-      {/* Asistente flotante (RAG): disponible en todas las páginas. */}
-      <AsistenteWidget />
     </div>
   )
 }

@@ -53,6 +53,18 @@ exports.preguntar = asyncHandler(async (req, res) => {
         fuente: s.fuente,
         seccion: s.seccion || '',
       })),
+      // Preguntas de seguimiento que el RAG genera en la MISMA llamada a Gemini
+      // (no cuestan una consulta extra). El cliente las muestra como chips.
+      sugerencias: datos.suggestions || [],
+      // Productos del catálogo que el RAG mencionó en la respuesta (recomendación).
+      // Viene con precio/stock ya resueltos por el RAG contra el catálogo en vivo.
+      productos: (datos.productos || []).map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        precio: p.precio,
+        stock: p.stock ?? 0,
+        imagenUrl: p.imagenUrl,
+      })),
     },
   })
 })

@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "seed": "node src/seed.js",
     "seed:admin": "node src/seed.js --admin",
+    "migrate:001": "node src/migrations/001-estados-pedido.js",
     "test": "node --test --test-concurrency=1 tests/",
     "lint": "eslint ."
   },

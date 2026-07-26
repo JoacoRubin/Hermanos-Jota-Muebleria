@@ -51,6 +51,14 @@ const userSchema = new mongoose.Schema(
       default: [],
       select: false,
     },
+    /**
+     * Cuándo se cambió la contraseña por última vez.
+     *
+     * Sirve para auditar y, sobre todo, para que el flujo de recuperación
+     * pueda dejar constancia: quien recupera su cuenta después de un robo
+     * necesita ver que el cambio se registró.
+     */
+    passwordChangedAt: { type: Date, default: null },
   },
   { timestamps: true }
 )

@@ -95,6 +95,11 @@ function Login() {
 
           <div className="auth-footer">
             <p>
+              <Link to="/recuperar-password" className="auth-link">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
+            <p>
               ¿No tenés cuenta?{' '}
               <Link to="/registro" className="auth-link">
                 Registrate acá

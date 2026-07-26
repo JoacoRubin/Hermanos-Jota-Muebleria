@@ -13,11 +13,17 @@ Node.js/Express con MongoDB, frontend en React/Vite.
 - 👤 Perfiles de usuario y roles (`user` / `admin`)
 - 🛒 Carrito de compras por usuario
 - 📦 Pedidos con validación de stock y precios calculados en el servidor
+- 🔄 Flujo de estados `pendiente → aceptado → despachado → entregado` (+ `cancelado`), con transiciones validadas en un único lugar e historial de quién cambió qué y cuándo
+- 🚚 Seguimiento para el cliente con línea de tiempo y pestañas *Pendientes / Entregados / Cancelados*
+- ↩️ Cancelación con reingreso de stock **exactamente una vez**, protegida contra doble ejecución
+- 🙈 El stock exacto **no sale de la API** para el cliente: solo `stockStatus` y el aviso *"Últimas N unidades"*, calculados en el servidor
+- 📊 Reposición de stock que **suma** unidades (`$inc`) y libro mayor auditable de cada movimiento
+- 🔑 Recuperación de contraseña con token hasheado, de un solo uso y con vencimiento
 - 🔒 Rutas protegidas por sesión y por rol, en frontend **y** backend
-- 👨‍💼 Panel de administración de productos
+- 👨‍💼 Panel de administración: productos, stock y pedidos
 - ✉️ Formulario de contacto con persistencia y bandeja para administradores
 - 🗄️ MongoDB Atlas
-- ✅ 82 tests automatizados (52 de integración en la API + 30 en el frontend)
+- ✅ 188 tests automatizados (144 en la API + 44 en el frontend)
 
 ---
 
@@ -165,19 +171,24 @@ Vitest + Testing Library
 
 | Método | Ruta | Acceso |
 | --- | --- | --- |
-| GET | `/api/productos` | Público (paginado, filtrable) |
-| GET | `/api/productos/:id` | Público |
+| GET | `/api/productos` | Público (paginado, filtrable). El `stock` exacto **solo** si el token es de admin |
+| GET | `/api/productos/:id` | Público (ídem) |
 | POST | `/api/productos` | Admin |
 | PUT | `/api/productos/:id` | Admin |
+| POST | `/api/productos/:id/stock` | Admin — **suma** unidades, no las reemplaza |
+| GET | `/api/productos/:id/movimientos` | Admin — libro mayor del inventario |
 | DELETE | `/api/productos/:id` | Admin |
 | POST | `/api/auth/register` | Público |
 | POST | `/api/auth/login` | Público |
 | POST | `/api/auth/refresh` | Cookie `httpOnly` |
 | POST | `/api/auth/logout` | Público (idempotente) |
+| POST | `/api/auth/forgot-password` | Público (5 por hora / IP) |
+| POST | `/api/auth/reset-password` | Público (5 por hora / IP) |
 | GET | `/api/auth/profile` | Autenticado |
 | POST | `/api/orders` | Autenticado |
-| GET | `/api/orders/mis-pedidos` | Autenticado |
+| GET | `/api/orders/mis-pedidos` | Autenticado (`?grupo=pendientes\|entregados\|cancelados`) |
 | GET | `/api/orders/:id` | Dueño o admin |
+| POST | `/api/orders/:id/cancelar` | Dueño (en estados cancelables) o admin |
 | GET | `/api/orders/admin/all` | Admin |
 | PUT | `/api/orders/:id/estado` | Admin |
 | POST | `/api/contacto` | Público (5 por hora / IP) |
@@ -207,5 +218,7 @@ Consistente en toda la API. El identificador público siempre se llama `id`.
 
 - **[docs/DEPLOY.md](docs/DEPLOY.md)** — variables de entorno, rotación de
   secretos, Render, Netlify, cold start y checklist de publicación.
+- **[docs/MAIL.md](docs/MAIL.md)** — cómo probar la recuperación de contraseña
+  hoy y qué falta configurar para que el mail salga de verdad en producción.
 - **[docs/AUDITORIA.md](docs/AUDITORIA.md)** — auditoría de seguridad y calidad,
   con el detalle de cada hallazgo y cómo se resolvió.

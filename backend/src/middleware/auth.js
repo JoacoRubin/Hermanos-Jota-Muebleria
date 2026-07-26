@@ -49,6 +49,46 @@ async function authMiddleware(req, res, next) {
 }
 
 /**
+ * Igual que `authMiddleware`, pero NO exige nada: si hay un token válido carga
+ * `req.user`, y si no lo hay sigue de largo con `req.user` en `undefined`.
+ *
+ * Existe por el catálogo. `GET /api/productos` es público —tiene que serlo,
+ * es la vidriera— pero el admin usa exactamente el mismo endpoint desde su
+ * panel, y él SÍ necesita ver el stock exacto. Duplicar la ruta en
+ * `/api/admin/productos` sería duplicar el filtrado, la paginación y la
+ * búsqueda; que es como se desincronizan las cosas.
+ *
+ * Un token roto acá NO es un error: es un visitante anónimo. Cualquier otra
+ * decisión convertiría una cookie vieja en una página caída.
+ */
+async function optionalAuth(req, res, next) {
+  const authHeader = req.headers.authorization
+
+  if (!authHeader?.startsWith('Bearer ')) return next()
+
+  const token = authHeader.slice('Bearer '.length).trim()
+  if (!token) return next()
+
+  try {
+    const payload = tokens.verifyAccessToken(token)
+    const user = await User.findById(payload.sub)
+
+    if (user) {
+      req.user = {
+        id: user._id.toString(),
+        nombre: user.nombre,
+        email: user.email,
+        role: user.role,
+      }
+    }
+  } catch {
+    // Token vencido, inválido o usuario borrado: se sigue como anónimo.
+  }
+
+  next()
+}
+
+/**
  * Exige uno de los roles indicados. Se usa SIEMPRE después de `authMiddleware`.
  */
 function requireRole(...roles) {
@@ -73,4 +113,4 @@ function requireRole(...roles) {
 
 const adminMiddleware = requireRole('admin')
 
-module.exports = { authMiddleware, requireRole, adminMiddleware }
+module.exports = { authMiddleware, optionalAuth, requireRole, adminMiddleware }

@@ -23,13 +23,16 @@ function ProductDetail() {
     setError(null)
 
     try {
-      setProducto(await ProductService.getById(id))
+      // Solo se manda el token si es admin: es la única vez que la respuesta
+      // cambia según quién pregunta (viene con `stock`). Para el resto es una
+      // lectura pública y no hay razón para adjuntar credenciales.
+      setProducto(await ProductService.getById(id, { auth: isAdmin }))
     } catch (err) {
       setError(err.detalle || err.message)
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, isAdmin])
 
   useEffect(() => {
     cargarProducto()
@@ -87,7 +90,11 @@ function ProductDetail() {
     )
   }
 
-  const sinStock = producto.stock === 0
+  // `disponible` y `lowStockMessage` los calcula el servidor. La cantidad
+  // exacta solo viene si el que mira es admin (`producto.stock`), y en ese
+  // caso se muestra aparte, marcada como dato interno.
+  const sinStock = producto.disponible === false
+  const esEscaso = producto.stockStatus === 'ultimas'
   const detalles = Object.entries(producto.detalles || {})
 
   return (
@@ -134,15 +141,28 @@ function ProductDetail() {
               {formatearPrecio(producto.precio)}
             </p>
 
-            <p
-              className={`producto-detalle__stock ${sinStock ? 'is-agotado' : ''}`}
-            >
-              {sinStock
-                ? 'Sin stock'
-                : `Stock disponible: ${producto.stock} ${
-                    producto.stock === 1 ? 'pieza' : 'piezas'
-                  }`}
-            </p>
+            {/* Igual que en la tarjeta del catálogo: solo se dice algo cuando
+                hay algo que decir. Con stock normal, silencio. */}
+            {producto.lowStockMessage && (
+              <p
+                className={`producto-detalle__stock ${
+                  sinStock ? 'is-agotado' : 'is-escaso'
+                }`}
+                role={esEscaso ? 'status' : undefined}
+              >
+                {producto.lowStockMessage}
+              </p>
+            )}
+
+            {/* El número exacto solo llega si la API lo mandó, y la API solo
+                se lo manda al admin. Se rotula como dato interno para que
+                nadie lo confunda con algo que ve el cliente. */}
+            {typeof producto.stock === 'number' && (
+              <p className="producto-detalle__stock-admin">
+                🔒 Stock real (solo admin): {producto.stock}{' '}
+                {producto.stock === 1 ? 'unidad' : 'unidades'}
+              </p>
+            )}
 
             <div className="producto-detalle__acciones">
               <button

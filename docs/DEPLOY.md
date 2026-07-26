@@ -42,6 +42,21 @@ SEED_ADMIN_PASSWORD=
 # En desarrollo, si se omite, apunta solo a http://localhost:8000.
 # En producción hay que setearla o el asistente devuelve 503.
 RAG_API_URL=https://rag-api-505192322875.southamerica-east1.run.app
+
+# ── Recuperación de contraseña ───────────────────────────────────────────
+# Base del link que va en el mail. Apunta al FRONTEND, no a la API.
+# Si se omite: en desarrollo cae a http://localhost:5173, en producción usa
+# el primer origen de CORS_ORIGINS.
+APP_URL=https://vermillion-gnome-5f2469.netlify.app
+
+# Cuánto vive el token de recuperación. Default 60.
+PASSWORD_RESET_TTL_MINUTES=60
+
+# Proveedor de mail: "console" imprime el mail en el log, "noop" lo descarta.
+# NO HAY PROVEEDOR REAL CONFIGURADO todavía — ver docs/MAIL.md.
+# Default: "console" en desarrollo, "noop" en producción. No pongas "console"
+# en producción: dejaría links de recuperación en los logs.
+MAIL_DRIVER=noop
 ```
 
 Generá cada secreto con un valor aleatorio **distinto**:

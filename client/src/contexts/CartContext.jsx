@@ -7,8 +7,37 @@ import {
   useMemo,
 } from 'react'
 import { useAuth } from './AuthContext'
+import { MAX_CANTIDAD_POR_ITEM } from '../constants'
 
 const CartContext = createContext(null)
+
+/**
+ * Cuántas unidades como máximo se pueden poner de este producto.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * ANTES ESTO ERA `product.stock ?? Infinity`, Y ESE CAMPO YA NO EXISTE.
+ * ────────────────────────────────────────────────────────────────────────────
+ * Ahora la API pública no devuelve el stock, así que el `??` caía siempre en
+ * `Infinity` y el carrito dejaba de topear: se podían cargar 500 sillas.
+ *
+ * El tope se arma con lo que el servidor sí revela:
+ *
+ *  - `unidadesRestantes` cuando quedan pocas (≤ umbral). Es el número que el
+ *    aviso "Últimas 2 unidades" ya publica, así que usarlo no filtra nada.
+ *  - `MAX_CANTIDAD_POR_ITEM` en cualquier otro caso. No sabemos cuántas hay
+ *    —ni tenemos por qué— pero sí sabemos que el servidor no acepta más de
+ *    100 por ítem, así que ese es el techo honesto.
+ *
+ * Esto es comodidad de la UI, no una garantía: el stock real lo verifica
+ * `POST /api/orders` con un `$inc` condicional y responde 409 si no alcanza.
+ */
+export function topeDe(producto) {
+  if (producto?.disponible === false) return 0
+
+  return typeof producto?.unidadesRestantes === 'number'
+    ? producto.unidadesRestantes
+    : MAX_CANTIDAD_POR_ITEM
+}
 
 export const useCart = () => {
   const context = useContext(CartContext)
@@ -90,17 +119,18 @@ export const CartProvider = ({ children }) => {
   }, [estado])
 
   const addToCart = useCallback((product, cantidad = 1) => {
+    const tope = topeDe(product)
+
     setCartItems((prev) => {
       const existente = prev.find((item) => item.id === product.id)
 
       if (existente) {
-        // Nunca se supera el stock disponible.
-        const nuevaCantidad = Math.min(
-          existente.cantidad + cantidad,
-          product.stock ?? Infinity
-        )
+        // Nunca se supera el tope conocido.
+        const nuevaCantidad = Math.min(existente.cantidad + cantidad, tope)
         return prev.map((item) =>
-          item.id === product.id ? { ...item, cantidad: nuevaCantidad } : item
+          item.id === product.id
+            ? { ...item, cantidad: nuevaCantidad, tope }
+            : item
         )
       }
 
@@ -111,8 +141,10 @@ export const CartProvider = ({ children }) => {
           nombre: product.nombre,
           precio: product.precio,
           imagenUrl: product.imagenUrl,
-          stock: product.stock,
-          cantidad: Math.min(cantidad, product.stock ?? Infinity),
+          // Se guarda el tope, no el stock: el ítem del carrito no debe
+          // conservar en localStorage un dato que la API decidió no dar.
+          tope,
+          cantidad: Math.min(cantidad, tope),
         },
       ]
     })
@@ -137,7 +169,12 @@ export const CartProvider = ({ children }) => {
           item.id === productId
             ? {
                 ...item,
-                cantidad: Math.min(nuevaCantidad, item.stock ?? Infinity),
+                // `?? MAX_CANTIDAD_POR_ITEM` cubre los carritos que quedaron
+                // guardados en localStorage con el formato viejo (`stock`).
+                cantidad: Math.min(
+                  nuevaCantidad,
+                  item.tope ?? MAX_CANTIDAD_POR_ITEM
+                ),
               }
             : item
         )

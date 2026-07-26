@@ -47,6 +47,30 @@ function createRateLimiters({ enabled = true } = {}) {
       message: jsonMessage('Demasiadas operaciones seguidas. Esperá un momento.'),
     }),
 
+    /**
+     * Recuperación de contraseña: más estricto todavía que el login.
+     *
+     * Sin techo, este endpoint es tres regalos en uno:
+     *  1. un oráculo de enumeración por tiempo de respuesta —aunque el mensaje
+     *     sea siempre el mismo, buscar el usuario y mandar el mail tarda más
+     *     que no hacerlo—;
+     *  2. una forma de bombardear el inbox de cualquier persona;
+     *  3. una fábrica de tokens contra la misma cuenta, que multiplica las
+     *     chances de que uno se filtre en algún lado.
+     *
+     * `skipSuccessfulRequests` NO se activa acá, a diferencia del login: en
+     * este endpoint TODO responde 200 —esa es justamente la defensa contra la
+     * enumeración—, así que saltear los éxitos sería no contar nada.
+     */
+    passwordReset: rateLimit({
+      ...base,
+      windowMs: 60 * 60 * 1000,
+      limit: 5,
+      message: jsonMessage(
+        'Pediste varios links de recuperación seguidos. Esperá una hora antes de volver a intentar.'
+      ),
+    }),
+
     // Formulario de contacto: público y sin sesión, o sea, imán de spam.
     contact: rateLimit({
       ...base,

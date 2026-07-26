@@ -1,5 +1,9 @@
 const { z } = require('zod')
-const { CATEGORIAS } = require('../constants')
+const {
+  CATEGORIAS,
+  MOTIVOS_MOVIMIENTO_STOCK,
+  MAX_REPOSICION_POR_MOVIMIENTO,
+} = require('../constants')
 const { paginationQuery, trimmedString } = require('./common')
 
 // Solo rutas relativas o http(s). Sin esto entra `javascript:` y el
@@ -60,6 +64,42 @@ const updateProductSchema = z
     message: 'No se enviaron campos para actualizar',
   })
 
+/**
+ * Reposición de stock.
+ *
+ * `cantidad` es estrictamente positiva y no admite el cero: este endpoint
+ * AGREGA unidades. Restar stock a mano no es una operación de negocio válida
+ * —las unidades salen por una venta, y eso lo hace el flujo de pedidos—, así
+ * que no se ofrece la posibilidad. Para corregir un error de carga está la
+ * edición del producto, que queda asentada como `ajuste`.
+ *
+ * El motivo se limita a los movimientos que un humano puede originar:
+ * `venta` y `cancelacion` los escribe el sistema, nunca un formulario.
+ */
+const agregarStockSchema = z
+  .object({
+    cantidad: z
+      .number({ invalid_type_error: 'La cantidad debe ser un número' })
+      .int('La cantidad debe ser un número entero')
+      .positive('La cantidad debe ser mayor a cero')
+      .max(
+        MAX_REPOSICION_POR_MOVIMIENTO,
+        `No se pueden agregar más de ${MAX_REPOSICION_POR_MOVIMIENTO} unidades de una vez`
+      ),
+    motivo: z
+      .enum(
+        MOTIVOS_MOVIMIENTO_STOCK.filter((m) => m === 'reposicion' || m === 'ajuste'),
+        {
+          errorMap: () => ({
+            message: 'Motivo inválido. Valores permitidos: reposicion, ajuste',
+          }),
+        }
+      )
+      .default('reposicion'),
+    nota: z.string().trim().max(200).optional().default(''),
+  })
+  .strict()
+
 const listProductsQuery = paginationQuery.extend({
   categoria: z.enum(CATEGORIAS).optional(),
   buscar: z.string().trim().max(80).optional(),
@@ -69,4 +109,9 @@ const listProductsQuery = paginationQuery.extend({
     .optional(),
 })
 
-module.exports = { createProductSchema, updateProductSchema, listProductsQuery }
+module.exports = {
+  createProductSchema,
+  updateProductSchema,
+  agregarStockSchema,
+  listProductsQuery,
+}

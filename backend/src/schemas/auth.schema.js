@@ -43,4 +43,31 @@ const loginSchema = z
   })
   .strict()
 
-module.exports = { registerSchema, loginSchema }
+const forgotPasswordSchema = z.object({ email }).strict()
+
+const resetPasswordSchema = z
+  .object({
+    // El token viaja en el body, no en la URL.
+    //
+    // Un token en la query string se guarda en el historial del navegador, en
+    // los logs de acceso del servidor y en el header `Referer` de cualquier
+    // recurso externo que cargue esa página. El link del mail SÍ lo lleva en
+    // la URL —no hay alternativa—, pero el canje se hace por POST: la pantalla
+    // de React lo lee de la URL y lo manda en el cuerpo.
+    token: z
+      .string()
+      .trim()
+      .min(20, 'Token inválido')
+      .max(200, 'Token inválido'),
+    // Misma política que el registro: una contraseña nueva es una contraseña
+    // nueva, y no hay razón para aceptar acá algo que no se aceptaría allá.
+    password,
+  })
+  .strict()
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+}

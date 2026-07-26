@@ -92,6 +92,56 @@ test('tolera una respuesta del RAG sin fuentes', async () => {
   )
 })
 
+test('mapea sugerencias y productos cuando el RAG los devuelve', async () => {
+  mockRag({
+    answer: 'El producto más caro es el Sillón Copacabana, con 320000 ARS.',
+    sources: [],
+    suggestions: ['¿Cuál es el más barato?', '¿Tienen stock?'],
+    productos: [
+      { id: '1', nombre: 'Sillón Copacabana', precio: 320000, stock: 5, imagenUrl: '/x.png' },
+    ],
+  })
+
+  const res = await request(app)
+    .post('/api/asistente')
+    .send({ pregunta: '¿Cuál es el producto más caro?' })
+
+  assert.equal(res.status, 200)
+  assert.deepEqual(res.body.data.sugerencias, [
+    '¿Cuál es el más barato?',
+    '¿Tienen stock?',
+  ])
+  assert.equal(res.body.data.productos.length, 1)
+  assert.equal(res.body.data.productos[0].nombre, 'Sillón Copacabana')
+  assert.equal(res.body.data.productos[0].precio, 320000)
+  assert.equal(res.body.data.productos[0].stock, 5)
+})
+
+test('un producto sin stock informado se normaliza a 0, no a undefined', async () => {
+  mockRag({
+    answer: 'texto',
+    productos: [{ id: '2', nombre: 'Mesa', precio: 100 }],
+  })
+
+  const res = await request(app)
+    .post('/api/asistente')
+    .send({ pregunta: '¿Cuánto sale?' })
+
+  assert.equal(res.body.data.productos[0].stock, 0)
+})
+
+test('tolera una respuesta del RAG sin sugerencias ni productos (RAG viejo)', async () => {
+  mockRag({ answer: 'Hacemos envíos a todo el país.', sources: [] })
+
+  const res = await request(app)
+    .post('/api/asistente')
+    .send({ pregunta: '¿Hacen envíos?' })
+
+  assert.equal(res.status, 200)
+  assert.deepEqual(res.body.data.sugerencias, [])
+  assert.deepEqual(res.body.data.productos, [])
+})
+
 // Distinto de que el RAG se caiga: acá contesta, pero con un status de error
 // (por ejemplo, 500 porque se quedó sin cuota del modelo).
 test('si el RAG responde con status de error, también es 502', async () => {

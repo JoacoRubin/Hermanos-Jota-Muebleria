@@ -11,9 +11,14 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Profile from './pages/Profile'
 import MisPedidos from './pages/MisPedidos'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import AdminPedidos from './pages/admin/AdminPedidos'
+import AdminStock from './pages/admin/AdminStock'
 import NotFound from './pages/NotFound'
 import FormCreateProduct from './components/FormCreateProduct'
 import ProtectedRoute from './components/ProtectedRoute'
+import AsistenteWidget from './components/AsistenteWidget'
 
 function App() {
   return (
@@ -30,6 +35,12 @@ function App() {
               <Route path="/contacto" element={<Contact />} />
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
+
+              {/* Recuperación de contraseña: públicas por definición. Quien
+                  las usa no puede iniciar sesión, que es justamente el
+                  problema que vinieron a resolver. */}
+              <Route path="/recuperar-password" element={<ForgotPassword />} />
+              <Route path="/restablecer-password" element={<ResetPassword />} />
 
               {/* Requieren sesión */}
               <Route
@@ -68,9 +79,40 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/pedidos"
+                element={
+                  <ProtectedRoute requireRole="admin">
+                    <AdminPedidos />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/stock"
+                element={
+                  <ProtectedRoute requireRole="admin">
+                    <AdminStock />
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+
+            {/*
+              El asistente va ACÁ, hermano de <Routes> y no adentro de
+              ModernLayout.
+
+              Estaba dentro del layout, y como cada página renderiza su propio
+              <ModernLayout>, al navegar React desmontaba el widget entero y lo
+              volvía a montar: la conversación se perdía en cada click del
+              menú. Acá afuera queda fuera del árbol de rutas, así que cambiar
+              de página no lo desmonta y el historial del chat sobrevive.
+
+              (Un F5 sí lo reinicia: el estado vive en memoria. Eso es otra
+              conversación —haría falta sessionStorage— y hoy no hace falta.)
+            */}
+            <AsistenteWidget />
           </div>
         </CartProvider>
       </AuthProvider>
