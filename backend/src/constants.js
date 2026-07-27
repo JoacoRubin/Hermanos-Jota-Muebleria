@@ -123,9 +123,11 @@ const ROLES = Object.freeze(['user', 'admin'])
 const MAX_CANTIDAD_POR_ITEM = 100
 const MAX_ITEMS_POR_PEDIDO = 50
 
+// `FLUJO_PEDIDO` no se exporta: acá solo sirve para derivar `ESTADOS_PEDIDO`.
+// El orden del recorrido lo necesita la línea de tiempo, que es del cliente y
+// tiene su propia copia en `client/src/constants.js`.
 module.exports = {
   CATEGORIAS,
-  FLUJO_PEDIDO,
   ESTADO_PEDIDO_INICIAL,
   ESTADOS_PEDIDO,
   TRANSICIONES_PEDIDO,

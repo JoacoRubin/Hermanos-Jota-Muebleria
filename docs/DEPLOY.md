@@ -43,10 +43,23 @@ SEED_ADMIN_PASSWORD=
 # En producción hay que setearla o el asistente devuelve 503.
 RAG_API_URL=https://rag-api-505192322875.southamerica-east1.run.app
 
+# Opcional: secreto compartido con el RAG. Express lo manda como
+# `Authorization: Bearer …` en cada consulta.
+#
+# ⚠️ Solo sirve si el microservicio lo VALIDA del otro lado. Si el servicio
+# acepta invocaciones anónimas, el rate limiting de esta API es decorativo:
+# cualquiera que descubra la URL le pega directo y quema la cuota del modelo.
+# Revisá que Cloud Run NO tenga "allow unauthenticated invocations".
+RAG_API_KEY=
+
 # ── Recuperación de contraseña ───────────────────────────────────────────
 # Base del link que va en el mail. Apunta al FRONTEND, no a la API.
-# Si se omite: en desarrollo cae a http://localhost:5173, en producción usa
-# el primer origen de CORS_ORIGINS.
+#
+# Si se omite: en desarrollo cae a http://localhost:3000 (el puerto que fija
+# client/vite.config.js), en producción al primer origen de CORS_ORIGINS.
+# En producción conviene setearla explícita igual: el día que alguien agregue
+# un segundo origen al principio de la lista, los links del mail empiezan a
+# apuntar al sitio equivocado y nadie se entera.
 APP_URL=https://vermillion-gnome-5f2469.netlify.app
 
 # Cuánto vive el token de recuperación. Default 60.
@@ -190,8 +203,15 @@ un parche, y conviene tenerlo claro.
 - [ ] Secreto viejo purgado del historial de git
 - [ ] `NODE_ENV=production` cargado en Render
 - [ ] `CORS_ORIGINS` con el origen exacto del frontend
+- [ ] `APP_URL` en **Render** con la URL del frontend, sin barra final
+      (ojo: es una variable del BACKEND aunque apunte al frontend — es Express
+      quien arma el link del mail de recuperación)
 - [ ] `VITE_API_URL` apuntando al backend correcto en Netlify
 - [ ] Secret `RENDER_URL` cargado en GitHub Actions
+- [ ] Migración de estados corrida: `npm run migrate:001 -- --apply`
+- [ ] Decidido qué hacer con el mail: hoy `MAIL_DRIVER=noop` en producción
+      significa que **la recuperación de contraseña no envía nada**
+      (ver `docs/MAIL.md`)
 - [ ] `RAG_API_URL` cargada en Render si querés el asistente activo
 - [ ] `npm test` y `npm run lint` en verde en los dos paquetes
 - [ ] Un usuario admin creado con `npm run seed:admin`

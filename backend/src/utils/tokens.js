@@ -87,7 +87,6 @@ function createTokenService(env) {
     setRefreshCookie,
     clearRefreshCookie,
     hashToken,
-    refreshTtlMs,
   }
 }
 

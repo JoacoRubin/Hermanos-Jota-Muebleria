@@ -38,6 +38,15 @@ const envSchema = z
     // arranque del servidor (el asistente es una función accesoria, no crítica).
     RAG_API_URL: z.string().url().optional(),
 
+    // Secreto compartido con el microservicio RAG. Express lo manda como
+    // `Authorization: Bearer …`. Es OPCIONAL y solo sirve de algo si el RAG lo
+    // valida del otro lado: si el servicio acepta invocaciones anónimas, todo
+    // el rate limiting de esta API se puede saltear pegándole directo.
+    RAG_API_KEY: z
+      .string()
+      .min(16, 'RAG_API_KEY debe tener al menos 16 caracteres')
+      .optional(),
+
     // ── Recuperación de contraseña ──────────────────────────────────────
     // Base del frontend: es lo que se antepone al link del mail de reseteo.
     // Tiene que apuntar al CLIENTE (Netlify), no a la API: el usuario abre una
@@ -76,6 +85,10 @@ const DEV_ORIGINS = [
   'http://localhost:5174',
 ]
 
+// Dónde corre el frontend en desarrollo. Es el puerto que fija
+// `client/vite.config.js`, no el 5173 por defecto de Vite.
+const DEV_APP_URL = 'http://localhost:3000'
+
 function loadEnv(source = process.env) {
   const parsed = envSchema.safeParse(source)
 
@@ -109,12 +122,23 @@ function loadEnv(source = process.env) {
     // En producción hay que setear RAG_API_URL explícitamente.
     ragApiUrl: env.RAG_API_URL || (isProduction ? '' : 'http://localhost:8000'),
 
-    // Base del link de recuperación. En desarrollo cae al Vite local; en
-    // producción, al primer origen permitido por CORS, que es el frontend real.
-    // Si no hay ninguno configurado queda vacío y el controller lo detecta.
+    /**
+     * Base del link de recuperación de contraseña.
+     *
+     * El default de desarrollo es el puerto 3000 porque es el que fija
+     * `client/vite.config.js` (`server.port: 3000`), NO el 5173 de fábrica de
+     * Vite. Si algún día cambia ahí, hay que cambiarlo acá: un desajuste no
+     * rompe nada visible, solo hace que el link del mail apunte a un puerto
+     * muerto y la recuperación no se pueda probar en local.
+     *
+     * En producción cae al primer origen permitido por CORS, que es el
+     * frontend real. Igual conviene setear APP_URL explícito: el día que
+     * alguien agregue un segundo origen al principio de la lista, los links
+     * empiezan a apuntar al sitio equivocado sin que nadie se entere.
+     */
     appUrl: (
       env.APP_URL ||
-      (isProduction ? configuredOrigins[0] || '' : 'http://localhost:5173')
+      (isProduction ? configuredOrigins[0] || '' : DEV_APP_URL)
     ).replace(/\/$/, ''),
 
     /**
@@ -130,4 +154,7 @@ function loadEnv(source = process.env) {
   }
 }
 
-module.exports = { loadEnv, envSchema, DEV_ORIGINS }
+// `envSchema` y `DEV_ORIGINS` no se exportan: solo los usa `loadEnv`, acá
+// mismo. `DEV_APP_URL` sí, porque `tests/env.test.js` lo compara contra el
+// puerto real de `client/vite.config.js`.
+module.exports = { loadEnv, DEV_APP_URL }

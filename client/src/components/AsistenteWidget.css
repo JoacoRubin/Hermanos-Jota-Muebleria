@@ -153,7 +153,11 @@
   opacity: 0.75;
 }
 
-.asistente-producto-sinstock {
+/* Antes se llamaba `-sinstock`, pero ahora este span muestra el
+   `lowStockMessage` que calcula el servidor, que puede decir "Últimas 2
+   unidades" además de "Sin stock". Un nombre que miente sobre lo que contiene
+   es peor que un nombre feo. */
+.asistente-producto-stock {
   font-size: 0.7rem;
   color: var(--rosa-polvoriento);
   font-weight: 600;

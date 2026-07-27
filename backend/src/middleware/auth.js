@@ -111,6 +111,7 @@ function requireRole(...roles) {
   }
 }
 
-const adminMiddleware = requireRole('admin')
-
-module.exports = { authMiddleware, optionalAuth, requireRole, adminMiddleware }
+// Se eliminó `adminMiddleware = requireRole('admin')`: era un alias que no
+// usaba ninguna ruta —todas llaman a `requireRole('admin')` directo— y tener
+// dos formas de pedir lo mismo invita a que mañana solo una se actualice.
+module.exports = { authMiddleware, optionalAuth, requireRole }

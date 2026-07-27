@@ -28,8 +28,6 @@ export const CATEGORIAS = [
 /** El camino feliz, en orden. Es lo que dibuja la línea de tiempo. */
 export const FLUJO_PEDIDO = ['pendiente', 'aceptado', 'despachado', 'entregado']
 
-export const ESTADOS_PEDIDO = [...FLUJO_PEDIDO, 'cancelado']
-
 /**
  * Espejo de `TRANSICIONES_PEDIDO`.
  *
@@ -45,12 +43,14 @@ export const TRANSICIONES_PEDIDO = {
   cancelado: [],
 }
 
-export const ESTADOS_CANCELABLES_CLIENTE = ['pendiente', 'aceptado']
-export const ESTADOS_CANCELABLES_ADMIN = [
-  'pendiente',
-  'aceptado',
-  'despachado',
-]
+/*
+ * NO hay espejo de ESTADOS_CANCELABLES_CLIENTE / _ADMIN, y es deliberado.
+ *
+ * Se escribieron y no los usó nadie: el servidor manda `puedeCancelarCliente`
+ * ya calculado en cada pedido, así que el cliente nunca necesitó reimplementar
+ * la regla. Duplicar una regla de negocio "por las dudas" es exactamente cómo
+ * se termina con dos versiones que un día dejan de coincidir.
+ */
 
 /** Las pestañas de "Mis pedidos". El orden es el que se ve en pantalla. */
 export const GRUPOS_MIS_PEDIDOS = [
@@ -100,13 +100,13 @@ export const COLOR_POR_ESTADO = {
  */
 export const UMBRAL_STOCK_BAJO = 3
 
-export const MOTIVOS_MOVIMIENTO_STOCK = [
-  'reposicion',
-  'venta',
-  'cancelacion',
-  'ajuste',
-]
-
+/**
+ * Las claves son el espejo de `MOTIVOS_MOVIMIENTO_STOCK` del backend.
+ *
+ * Antes había además un array `MOTIVOS_MOVIMIENTO_STOCK` acá, que no usaba
+ * nadie: este objeto ya lleva la lista completa en sus claves, así que tener
+ * las dos cosas era garantizar que un día se desincronicen.
+ */
 export const ETIQUETA_MOTIVO = {
   reposicion: 'Reposición',
   venta: 'Venta',

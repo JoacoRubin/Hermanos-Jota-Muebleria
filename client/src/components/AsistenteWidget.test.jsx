@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import AsistenteWidget from './AsistenteWidget'
 import AsistenteService from '../services/chatService'
+import { formatearPrecio } from '../constants'
 
 // El widget no debe depender del backend: mockeamos el servicio.
 vi.mock('../services/chatService', () => ({
@@ -179,7 +180,7 @@ describe('AsistenteWidget', () => {
       respuesta: 'El más caro es el Sillón Copacabana.',
       fuentes: [],
       productos: [
-        { id: '1', nombre: 'Sillón Copacabana', precio: 320000, stock: 5, imagenUrl: '/x.png' },
+        { id: '1', nombre: 'Sillón Copacabana', precio: 320000, disponible: true, imagenUrl: '/x.png' },
       ],
     })
 
@@ -191,7 +192,17 @@ describe('AsistenteWidget', () => {
 
     await screen.findByText('El más caro es el Sillón Copacabana.')
     expect(screen.getByText('Sillón Copacabana')).toBeInTheDocument()
-    expect(screen.getByText('$320.000')).toBeInTheDocument()
+
+    // Se compara contra el formateador compartido en vez de hardcodear
+    // "$320.000": lo que importa es que el asistente formatee IGUAL que el
+    // resto de la app, no cuál es el resultado exacto.
+    //
+    // El `.replace` no es opcional: `Intl` separa el signo del número con un
+    // espacio DURO (U+00A0), y Testing Library normaliza el texto del DOM pero
+    // NO el string del matcher. Sin esto, los dos valores se ven idénticos en
+    // el mensaje de error y no matchean nunca.
+    const precioEsperado = formatearPrecio(320000).replace(/\s/g, ' ')
+    expect(screen.getByText(precioEsperado)).toBeInTheDocument()
   })
 
   // ── Regresión: el click que recargaba la aplicación entera ──────────────
@@ -203,7 +214,7 @@ describe('AsistenteWidget', () => {
       respuesta: 'Mirá este.',
       fuentes: [],
       productos: [
-        { id: 'abc123', nombre: 'Sillón Copacabana', precio: 320000, stock: 5 },
+        { id: 'abc123', nombre: 'Sillón Copacabana', precio: 320000, disponible: true },
       ],
     })
 
@@ -229,11 +240,22 @@ describe('AsistenteWidget', () => {
     expect(evento.defaultPrevented).toBe(true)
   })
 
+  // `lowStockMessage` lo calcula el servidor (mismo serializer que el
+  // catálogo), así que el fixture tiene que traerlo como lo trae la API real.
   it('marca "Sin stock" en un producto recomendado sin stock', async () => {
     AsistenteService.preguntar.mockResolvedValue({
       respuesta: 'Te recomendaría el Sofá Patagonia.',
       fuentes: [],
-      productos: [{ id: '2', nombre: 'Sofá Patagonia', precio: 245000, stock: 0 }],
+      productos: [
+        {
+          id: '2',
+          nombre: 'Sofá Patagonia',
+          precio: 245000,
+          disponible: false,
+          stockStatus: 'agotado',
+          lowStockMessage: 'Sin stock',
+        },
+      ],
     })
 
     const user = userEvent.setup()

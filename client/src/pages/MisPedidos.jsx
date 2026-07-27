@@ -3,14 +3,11 @@ import { Link } from 'react-router-dom'
 import OrderService from '../services/orderService'
 import ModernLayout from '../components/ModernLayout'
 import OrderTimeline from '../components/orders/OrderTimeline'
+import OrderTabs from '../components/orders/OrderTabs'
+import OrderItems from '../components/orders/OrderItems'
+import OrderEstado from '../components/orders/OrderEstado'
 import { useUI } from '../contexts/UIContext'
-import {
-  formatearPrecio,
-  formatearFecha,
-  COLOR_POR_ESTADO,
-  ETIQUETA_ESTADO,
-  GRUPOS_MIS_PEDIDOS,
-} from '../constants'
+import { formatearPrecio, formatearFecha } from '../constants'
 
 const VACIO_POR_GRUPO = {
   pendientes: {
@@ -96,23 +93,6 @@ function MisPedidos() {
     }
   }
 
-  const pestanas = (
-    <div className="pedidos-tabs" role="tablist" aria-label="Filtrar pedidos">
-      {GRUPOS_MIS_PEDIDOS.map(({ clave, etiqueta }) => (
-        <button
-          key={clave}
-          type="button"
-          role="tab"
-          aria-selected={grupo === clave}
-          className={`pedidos-tab ${grupo === clave ? 'is-activa' : ''}`}
-          onClick={() => setGrupo(clave)}
-        >
-          {etiqueta}
-        </button>
-      ))}
-    </div>
-  )
-
   const vacio = VACIO_POR_GRUPO[grupo]
 
   return (
@@ -120,7 +100,7 @@ function MisPedidos() {
       <div className="content-card">
         <h1>Mis pedidos</h1>
 
-        {pestanas}
+        <OrderTabs grupo={grupo} onCambiar={setGrupo} />
 
         {loading && (
           <p className="loading" role="status">
@@ -176,15 +156,7 @@ function MisPedidos() {
                     </p>
                   </div>
 
-                  <span
-                    className="pedido-card__estado"
-                    style={{
-                      backgroundColor:
-                        COLOR_POR_ESTADO[pedido.estado] || '#757575',
-                    }}
-                  >
-                    {ETIQUETA_ESTADO[pedido.estado] || pedido.estado}
-                  </span>
+                  <OrderEstado estado={pedido.estado} />
                 </header>
 
                 <section className="pedido-card__seguimiento">
@@ -208,27 +180,10 @@ function MisPedidos() {
                   )}
                 </section>
 
-                <div className="pedido-card__items">
-                  <h3>
-                    Productos ({pedido.cantidadTotal}{' '}
-                    {pedido.cantidadTotal === 1 ? 'artículo' : 'artículos'})
-                  </h3>
-                  <ul>
-                    {pedido.items.map((item) => (
-                      <li key={item.productoId} className="pedido-item">
-                        <span>
-                          {item.nombre}{' '}
-                          <span className="pedido-item__cantidad">
-                            ×{item.cantidad}
-                          </span>
-                        </span>
-                        <span className="pedido-item__subtotal">
-                          {formatearPrecio(item.subtotal)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <OrderItems
+                  items={pedido.items}
+                  cantidadTotal={pedido.cantidadTotal}
+                />
 
                 <footer className="pedido-card__footer">
                   <div>

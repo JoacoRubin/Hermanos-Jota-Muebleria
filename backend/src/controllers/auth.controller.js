@@ -377,5 +377,3 @@ exports.resetPassword = asyncHandler(async (req, res) => {
       'iniciá sesión con tu contraseña nueva.',
   })
 })
-
-exports.MAX_SESIONES = MAX_SESIONES

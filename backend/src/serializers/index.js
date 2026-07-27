@@ -185,11 +185,14 @@ function serializeContactMessage(consulta) {
   }
 }
 
+// `serializeOrderItem` y `serializeStatusEntry` no se exportan: son piezas de
+// `serializeOrder`. Exponerlas invitaría a que un controller arme su propia
+// versión de un pedido salteándose el serializer completo, que es justo el
+// problema que este módulo vino a resolver.
 module.exports = {
   serializeUser,
   serializeProduct,
   serializeOrder,
-  serializeOrderItem,
   serializeStockMovement,
   serializeContactMessage,
 }

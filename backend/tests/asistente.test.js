@@ -92,14 +92,11 @@ test('tolera una respuesta del RAG sin fuentes', async () => {
   )
 })
 
-test('mapea sugerencias y productos cuando el RAG los devuelve', async () => {
+test('las sugerencias del RAG se reenvían tal cual', async () => {
   mockRag({
-    answer: 'El producto más caro es el Sillón Copacabana, con 320000 ARS.',
+    answer: 'El producto más caro es el Sillón Copacabana.',
     sources: [],
     suggestions: ['¿Cuál es el más barato?', '¿Tienen stock?'],
-    productos: [
-      { id: '1', nombre: 'Sillón Copacabana', precio: 320000, stock: 5, imagenUrl: '/x.png' },
-    ],
   })
 
   const res = await request(app)
@@ -111,23 +108,65 @@ test('mapea sugerencias y productos cuando el RAG los devuelve', async () => {
     '¿Cuál es el más barato?',
     '¿Tienen stock?',
   ])
-  assert.equal(res.body.data.productos.length, 1)
-  assert.equal(res.body.data.productos[0].nombre, 'Sillón Copacabana')
-  assert.equal(res.body.data.productos[0].precio, 320000)
-  assert.equal(res.body.data.productos[0].stock, 5)
 })
 
-test('un producto sin stock informado se normaliza a 0, no a undefined', async () => {
+/**
+ * ────────────────────────────────────────────────────────────────────────────
+ * CAMBIO DE CONTRATO: los datos del producto YA NO pasan de largo.
+ * ────────────────────────────────────────────────────────────────────────────
+ * Antes, `nombre`, `precio` y `disponible` salían tal cual de la respuesta del
+ * RAG, y había tests que verificaban justamente ese pass-through —incluido uno
+ * que fijaba `disponible ?? true` como default—.
+ *
+ * Estaba mal, y por dos razones. Una: el RAG tiene su propio snapshot del
+ * catálogo en los embeddings, y ese snapshot envejece, así que el bot podía
+ * cotizar un precio que ya no existe. Dos: `?? true` es el modelo prometiendo
+ * disponibilidad que nadie verificó.
+ *
+ * Ahora Express relee esos productos de MongoDB. Del RAG se conserva solo el
+ * ID y el orden. La rehidratación completa —precio real, disponibilidad real,
+ * aviso de escasez, ids alucinados descartados— se prueba con productos de
+ * verdad en `asistenteContrato.test.js`.
+ */
+test('un id que no es un ObjectId se descarta antes de tocar la base', async () => {
   mockRag({
     answer: 'texto',
-    productos: [{ id: '2', nombre: 'Mesa', precio: 100 }],
+    productos: [
+      { id: '1', nombre: 'Sillón Copacabana', precio: 320000 },
+      { id: 'no-existe' },
+    ],
   })
 
   const res = await request(app)
     .post('/api/asistente')
-    .send({ pregunta: '¿Cuánto sale?' })
+    .send({ pregunta: '¿Cuál es el producto más caro?' })
 
-  assert.equal(res.body.data.productos[0].stock, 0)
+  assert.equal(res.status, 200)
+  assert.deepEqual(
+    res.body.data.productos,
+    [],
+    'un id inventado no puede generar una tarjeta que linkea a un 404'
+  )
+})
+
+test('lo que el RAG diga del producto no se reenvía sin verificar', async () => {
+  mockRag({
+    answer: 'texto',
+    productos: [
+      { id: '1', nombre: 'Sofá GRATIS', precio: 1, disponible: true },
+    ],
+  })
+
+  const res = await request(app)
+    .post('/api/asistente')
+    .send({ pregunta: '¿Cuánto sale el sofá?' })
+
+  const serializado = JSON.stringify(res.body)
+  assert.equal(
+    /Sofá GRATIS/.test(serializado),
+    false,
+    'el nombre que inventó el modelo no debe llegar al cliente'
+  )
 })
 
 test('tolera una respuesta del RAG sin sugerencias ni productos (RAG viejo)', async () => {

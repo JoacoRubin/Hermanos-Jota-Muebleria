@@ -45,11 +45,6 @@ const OrderService = {
     return { pedidos: data, meta }
   },
 
-  async getOrderById(orderId) {
-    const { data } = await api.get(`/api/orders/${orderId}`, { auth: true })
-    return data
-  },
-
   async getAllOrders({ page = 1, limit = 20, estado, grupo } = {}) {
     const params = new URLSearchParams({ page, limit })
     if (estado) params.set('estado', estado)

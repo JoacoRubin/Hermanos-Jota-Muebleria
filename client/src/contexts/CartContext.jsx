@@ -31,7 +31,7 @@ const CartContext = createContext(null)
  * Esto es comodidad de la UI, no una garantía: el stock real lo verifica
  * `POST /api/orders` con un `$inc` condicional y responde 409 si no alcanza.
  */
-export function topeDe(producto) {
+function topeDe(producto) {
   if (producto?.disponible === false) return 0
 
   return typeof producto?.unidadesRestantes === 'number'

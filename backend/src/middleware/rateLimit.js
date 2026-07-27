@@ -97,4 +97,6 @@ function createRateLimiters({ enabled = true } = {}) {
 
 const limiters = createRateLimiters({ enabled: !env.isTest })
 
-module.exports = { limiters, createRateLimiters }
+// `createRateLimiters` no se exporta: nadie la llama de afuera. Se deja como
+// función para que el flag `enabled` quede explícito en un solo lugar.
+module.exports = { limiters }

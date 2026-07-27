@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import AsistenteService from '../services/chatService'
+import { formatearPrecio } from '../constants'
 import './AsistenteWidget.css'
 
 const SALUDO = {
@@ -19,9 +20,6 @@ const SUGERENCIAS_INICIALES = [
   '¿Puedo pagar en cuotas?',
 ]
 
-const formatearPrecio = (precio) =>
-  typeof precio === 'number' ? precio.toLocaleString('es-AR') : '—'
-
 /**
  * Asistente flotante (RAG).
  *
@@ -39,12 +37,31 @@ function AsistenteWidget() {
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
   const finRef = useRef(null)
+  const inputRef = useRef(null)
 
   // Autoscroll al último mensaje. El `?.` en el método cubre entornos donde
   // scrollIntoView no existe (jsdom en los tests, navegadores muy viejos).
   useEffect(() => {
     finRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [mensajes, cargando])
+
+  // Al abrir el panel, el foco va al campo de texto. Sin esto el usuario de
+  // teclado tiene que tabular por toda la página para llegar a escribir.
+  useEffect(() => {
+    if (abierto) inputRef.current?.focus?.()
+  }, [abierto])
+
+  // Escape cierra, que es lo que cualquiera espera de un panel flotante.
+  useEffect(() => {
+    if (!abierto) return
+
+    const alPresionar = (evento) => {
+      if (evento.key === 'Escape') setAbierto(false)
+    }
+
+    document.addEventListener('keydown', alPresionar)
+    return () => document.removeEventListener('keydown', alPresionar)
+  }, [abierto])
 
   async function preguntar(preguntaTexto) {
     const pregunta = (preguntaTexto ?? texto).trim()
@@ -112,7 +129,21 @@ function AsistenteWidget() {
             </button>
           </div>
 
-          <div className="asistente-mensajes">
+          {/*
+            `role="log"` trae `aria-live="polite"` implícito, pero se declara
+            explícito por compatibilidad. Sin esto, un usuario con lector de
+            pantalla NUNCA se entera de que llegó la respuesta: escribe la
+            pregunta, se manda, y el silencio es total.
+
+            `aria-atomic="false"` es lo que hace que se anuncie solo el mensaje
+            nuevo y no la conversación entera de vuelta en cada respuesta.
+          */}
+          <div
+            className="asistente-mensajes"
+            role="log"
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {mensajes.map((m, i) => {
               const esUltimoMensaje = i === mensajes.length - 1
               return (
@@ -137,17 +168,32 @@ function AsistenteWidget() {
                       {m.productos.map((p) => (
                         <Link
                           key={p.id}
-                          className={`asistente-producto${p.stock === 0 ? ' sin-stock' : ''}`}
+                          className={`asistente-producto${p.disponible === false ? ' sin-stock' : ''}`}
                           to={`/productos/${p.id}`}
                         >
                           {p.imagenUrl && <img src={p.imagenUrl} alt={p.nombre} />}
                           <div className="asistente-producto-info">
                             <span className="asistente-producto-nombre">{p.nombre}</span>
+                            {/* El mismo `formatearPrecio` que el catálogo y el
+                                carrito. Antes este archivo tenía su PROPIA
+                                versión, con el "$" puesto a mano al lado: dos
+                                implementaciones de "mostrar un precio" en la
+                                misma app es cómo empiezan a divergir. */}
                             <span className="asistente-producto-precio">
-                              ${formatearPrecio(p.precio)}
+                              {formatearPrecio(p.precio)}
                             </span>
-                            {p.stock === 0 && (
-                              <span className="asistente-producto-sinstock">Sin stock</span>
+                            {/*
+                              Nombre, precio y disponibilidad vienen de MongoDB,
+                              no de lo que dijo el modelo: Express rehidrata los
+                              productos antes de responder. Y `lowStockMessage`
+                              sale del MISMO serializer que el catálogo, así que
+                              el bot y la ficha del producto no se pueden
+                              contradecir sobre la escasez.
+                            */}
+                            {p.lowStockMessage && (
+                              <span className="asistente-producto-stock">
+                                {p.lowStockMessage}
+                              </span>
                             )}
                           </div>
                         </Link>
@@ -200,6 +246,7 @@ function AsistenteWidget() {
               maxLength={500}
               disabled={cargando}
               aria-label="Tu pregunta"
+              ref={inputRef}
             />
             <button type="submit" disabled={cargando || !texto.trim()}>
               Enviar

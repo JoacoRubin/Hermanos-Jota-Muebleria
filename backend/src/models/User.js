@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
+const { ROLES } = require('../constants')
 
 const SALT_ROUNDS = 12
 
@@ -42,8 +43,11 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     role: {
+      // Lee de `constants.js` en vez de repetir la lista. `ROLES` existía y
+      // no lo usaba nadie: había dos fuentes de verdad para los roles y la
+      // "única" era justamente la muerta.
       type: String,
-      enum: ['user', 'admin'],
+      enum: ROLES,
       default: 'user',
     },
     refreshTokens: {
@@ -89,4 +93,3 @@ userSchema.methods.toJSON = function toJSON() {
 }
 
 module.exports = mongoose.model('User', userSchema)
-module.exports.SALT_ROUNDS = SALT_ROUNDS

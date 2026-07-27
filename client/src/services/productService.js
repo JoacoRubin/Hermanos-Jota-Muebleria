@@ -80,13 +80,6 @@ const ProductService = {
     return data
   },
 
-  async update(id, productData) {
-    const { data } = await api.put(`/api/productos/${id}`, productData, {
-      auth: true,
-    })
-    return data
-  },
-
   async remove(id) {
     return api.delete(`/api/productos/${id}`, { auth: true })
   },

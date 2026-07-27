@@ -220,5 +220,8 @@ Consistente en toda la API. El identificador público siempre se llama `id`.
   secretos, Render, Netlify, cold start y checklist de publicación.
 - **[docs/MAIL.md](docs/MAIL.md)** — cómo probar la recuperación de contraseña
   hoy y qué falta configurar para que el mail salga de verdad en producción.
+- **[docs/ASISTENTE.md](docs/ASISTENTE.md)** — contrato con el microservicio
+  RAG, por qué Express rehidrata los productos desde Mongo y qué queda abierto
+  (autenticación del RAG, FAQ stateless vs. conversación contextual).
 - **[docs/AUDITORIA.md](docs/AUDITORIA.md)** — auditoría de seguridad y calidad,
   con el detalle de cada hallazgo y cómo se resolvió.
