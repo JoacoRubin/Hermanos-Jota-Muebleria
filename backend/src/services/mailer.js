@@ -67,9 +67,65 @@ function crearNoopMailer() {
   }
 }
 
+/** Un mail que tarda más que esto no va a salir: mejor cortar. */
+const TIMEOUT_ENVIO_MS = 15_000
+
+/**
+ * Driver de Brevo (ex-Sendinblue).
+ *
+ * Se eligió por una razón concreta: admite **verificación de remitente único**.
+ * O sea, alcanza con confirmar UNA casilla —un Gmail sirve— en vez de tener
+ * que cargar registros SPF/DKIM en el DNS de un dominio propio. Eso es lo que
+ * lo vuelve viable sin comprar nada. Plan gratis: 300 mails por día.
+ *
+ * Habla por HTTP con `fetch`, así que NO agrega dependencias al proyecto. Un
+ * driver por SMTP habría exigido `nodemailer`.
+ *
+ * ⚠️ Deliverability: mandando "desde" un Gmail a través de los servidores de
+ * Brevo, la firma DKIM no alinea con `gmail.com`. Gmail publica DMARC en
+ * `p=none`, así que el mail no se rechaza, pero una parte va a caer en spam.
+ * Es el precio de no tener dominio propio, y conviene saberlo antes de que
+ * alguien reporte que "no le llegó nada". Ver docs/MAIL.md.
+ */
+function crearBrevoMailer(env) {
+  return {
+    nombre: 'brevo',
+    async enviar({ para, asunto, texto, html }) {
+      const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': env.BREVO_API_KEY,
+          accept: 'application/json',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: env.MAIL_FROM_NOMBRE, email: env.MAIL_FROM },
+          to: [{ email: para }],
+          subject: asunto,
+          textContent: texto,
+          ...(html ? { htmlContent: html } : {}),
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_ENVIO_MS),
+      })
+
+      if (!respuesta.ok) {
+        // El cuerpo del error de Brevo dice cosas útiles ("sender not
+        // verified", "credits exhausted"). Va al log del servidor, nunca al
+        // cliente: quien pide recuperar su contraseña recibe siempre la misma
+        // respuesta, exista o no la cuenta.
+        const detalle = await respuesta.text().catch(() => '')
+        throw new Error(`Brevo respondió ${respuesta.status}: ${detalle}`)
+      }
+
+      return { enviado: true, driver: 'brevo' }
+    },
+  }
+}
+
 const DRIVERS = {
   console: crearConsoleMailer,
   noop: crearNoopMailer,
+  brevo: crearBrevoMailer,
 }
 
 function crearMailer(env) {
@@ -84,7 +140,7 @@ function crearMailer(env) {
     )
   }
 
-  return fabrica()
+  return fabrica(env)
 }
 
 // ─── Plantillas ─────────────────────────────────────────────────────────────

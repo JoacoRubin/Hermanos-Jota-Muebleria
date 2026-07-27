@@ -1,17 +1,16 @@
 # Envío de mails
 
-## Estado actual: no hay proveedor configurado
+## Estado actual
 
 El flujo de "Olvidé mi contraseña" está **implementado y probado de punta a
-punta**, pero el mail no sale a internet porque el proyecto todavía no tiene
-un proveedor de correo conectado.
+punta**, y hay un driver de Brevo listo para usar. Mientras no se configure,
+el mail no sale a internet.
 
-Concretamente:
-
-| Entorno | Driver por defecto | Qué pasa |
+| Driver | Cuándo | Qué pasa |
 | --- | --- | --- |
-| Desarrollo | `console` | El mail entero, con el link, se imprime en la consola del servidor. El flujo se prueba completo. |
-| Producción | `noop` | El mail se descarta y queda un `console.warn` en el log. **El usuario no recibe nada.** |
+| `console` | Default en desarrollo | El mail entero, con el link, se imprime en la consola del servidor. El flujo se prueba completo. |
+| `noop` | Default en producción | El mail se descarta y queda un `console.warn` en el log. **El usuario no recibe nada.** |
+| `brevo` | Hay que activarlo | Envía de verdad. Ver "Activarlo gratis" más abajo. |
 
 > El default de producción es `noop` y **no** `console` a propósito. Imprimir
 > un link de recuperación en el log de producción sería regalarle acceso a
@@ -30,79 +29,72 @@ Concretamente:
 El token vive una hora (`PASSWORD_RESET_TTL_MINUTES`) y se puede usar **una
 sola vez**.
 
-## Qué falta para producción
+## Activarlo gratis, sin dominio propio
 
-Hay que hacer **tres cosas**. La arquitectura ya está lista: el controller de
-auth no sabe nada de proveedores, habla con la interfaz de
-`backend/src/services/mailer.js`.
+El driver **ya está escrito** (`crearBrevoMailer`). Lo único que falta es
+crear la cuenta y cargar dos variables.
 
-### 1. Elegir un proveedor y crear la cuenta
+### Por qué Brevo y no Resend
 
-Opciones razonables para este proyecto (todas tienen plan gratuito suficiente
-para un e-commerce chico):
+Los proveedores verifican al remitente de dos formas distintas:
 
-| Proveedor | Gratis | Nota |
+| Forma | Qué pide | ¿Necesita dominio? |
 | --- | --- | --- |
-| [Resend](https://resend.com) | 3.000 mails/mes | API simple, la más rápida de integrar |
-| [SendGrid](https://sendgrid.com) | 100 mails/día | El clásico |
-| SMTP propio (Gmail, Zoho) | — | Requiere `nodemailer`, que **hoy no es dependencia del proyecto** |
+| Verificación de **dominio** | Registros SPF/DKIM/DMARC en el DNS | Sí |
+| Verificación de **remitente único** | Un click en un mail de confirmación | **No** |
 
-Resend y SendGrid se pueden usar con `fetch` contra su API REST, así que **no
-haría falta agregar ninguna dependencia**. Con SMTP sí: habría que instalar
-`nodemailer`.
+[Brevo](https://www.brevo.com) admite la segunda y da **300 mails por día
+gratis, para siempre, sin tarjeta**. Alcanza con verificar una casilla —un
+Gmail sirve—. Su API es HTTP, así que entra con `fetch` y **no agrega
+dependencias** al proyecto.
 
-### 2. Verificar el dominio del remitente
+Resend y SendGrid solo dejan mandar a tu propia casilla mientras no verifiques
+un dominio, así que no sirven para que un cliente recupere su cuenta.
 
-Sin esto los mails caen en spam o directamente los rechazan. En el panel del
-proveedor hay que cargar los registros DNS del dominio:
+### Los cinco pasos
 
-- **SPF** — autoriza al proveedor a mandar en nombre del dominio
-- **DKIM** — firma criptográfica de cada mail
-- **DMARC** — qué hacer con los mails que no pasan las dos anteriores
+1. Creá una cuenta en [brevo.com](https://www.brevo.com) (plan gratuito).
+2. **Senders, Domains & Dedicated IPs → Senders → Add a sender.** Poné la
+   casilla desde la que querés que salgan los mails. Te llega un mail de
+   confirmación: hacé click.
+3. **SMTP & API → API Keys → Generate a new API key.** Copiala; se muestra
+   una sola vez.
+4. Cargá en Render (**Environment**):
 
-Mientras el dominio no esté verificado, los proveedores solo dejan mandar a la
-casilla del dueño de la cuenta.
+   ```dotenv
+   MAIL_DRIVER=brevo
+   BREVO_API_KEY=xkeysib-...
+   MAIL_FROM=la-casilla-que-verificaste@gmail.com
+   MAIL_FROM_NOMBRE=Mueblería Hermanos Jota
+   ```
 
-### 3. Escribir el driver
+5. Guardá. Render redeploya y la recuperación de contraseña empieza a enviar.
 
-Un archivo, una función. En `backend/src/services/mailer.js`:
+> El servidor **no arranca** si ponés `MAIL_DRIVER=brevo` y falta
+> `BREVO_API_KEY` o `MAIL_FROM`. Es deliberado: sin esa guarda el proceso
+> levantaría bien y el fallo aparecería recién cuando un usuario real intente
+> recuperar su cuenta — y en silencio, porque el error se traga a propósito
+> para no delatar qué cuentas existen.
 
-```js
-function crearResendMailer(env) {
-  return {
-    nombre: 'resend',
-    async enviar({ para, asunto, texto, html }) {
-      const respuesta = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: env.MAIL_FROM,       // ej: 'Hermanos Jota <no-reply@tudominio.com>'
-          to: para,
-          subject: asunto,
-          text: texto,
-          ...(html ? { html } : {}),
-        }),
-      })
+### La limitación que tenés que conocer
 
-      if (!respuesta.ok) {
-        throw new Error(`Resend respondió ${respuesta.status}`)
-      }
+Mandando "desde" un Gmail a través de los servidores de Brevo, la firma DKIM
+**no alinea** con `gmail.com`. Como Gmail publica DMARC en `p=none`, el mail
+no se rechaza, pero **una parte va a caer en spam**.
 
-      return { enviado: true, driver: 'resend' }
-    },
-  }
-}
-```
+Para un proyecto de portfolio es aceptable. Para vender de verdad, no: ahí sí
+hace falta un dominio propio con SPF/DKIM.
 
-Después:
+**Si sos estudiante**, el [GitHub Student Developer Pack](https://education.github.com/pack)
+incluye un dominio gratis por un año (Namecheap regala un `.me`). Con eso
+verificás el dominio en Brevo o Resend, la firma alinea y el problema de spam
+desaparece — sin gastar nada.
 
-1. Agregalo al mapa `DRIVERS` con la clave `resend`.
-2. Sumá `'resend'` al enum de `MAIL_DRIVER` en `backend/src/config/env.js`, y
-   declará ahí `RESEND_API_KEY` y `MAIL_FROM`.
-3. Cargá esas variables en Render y poné `MAIL_DRIVER=resend`.
+### Agregar otro proveedor más adelante
+
+Un archivo, una función. Se escribe un `crearXMailer(env)` que devuelva
+`{ nombre, enviar }`, se lo suma al mapa `DRIVERS`, y se agrega la clave al
+enum de `MAIL_DRIVER` en `config/env.js`.
 
 **Nada más cambia.** El controller de auth, los schemas, los tests y las
 pantallas del frontend quedan igual. Ese es el punto de haber puesto una

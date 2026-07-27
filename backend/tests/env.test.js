@@ -95,6 +95,41 @@ test('un TTL de recuperación absurdo se rechaza', () => {
   )
 })
 
+test('MAIL_DRIVER=brevo sin credenciales NO deja arrancar', () => {
+  // Sin esto el servidor levanta bien y la recuperación falla recién cuando un
+  // usuario real la usa — y en silencio, porque el error se traga para no
+  // delatar qué cuentas existen.
+  assert.throws(
+    () => loadEnv({ ...BASE, NODE_ENV: 'development', MAIL_DRIVER: 'brevo' }),
+    /BREVO_API_KEY/
+  )
+
+  assert.throws(
+    () =>
+      loadEnv({
+        ...BASE,
+        NODE_ENV: 'development',
+        MAIL_DRIVER: 'brevo',
+        BREVO_API_KEY: 'x'.repeat(30),
+      }),
+    /MAIL_FROM/
+  )
+})
+
+test('MAIL_DRIVER=brevo bien configurado arranca', () => {
+  const env = loadEnv({
+    ...BASE,
+    NODE_ENV: 'production',
+    CORS_ORIGINS: 'https://x.com',
+    MAIL_DRIVER: 'brevo',
+    BREVO_API_KEY: 'x'.repeat(30),
+    MAIL_FROM: 'hola@ejemplo.com',
+  })
+
+  assert.equal(env.mailDriver, 'brevo')
+  assert.equal(env.MAIL_FROM_NOMBRE, 'Mueblería Hermanos Jota')
+})
+
 test('una RAG_API_KEY demasiado corta se rechaza en el arranque', () => {
   assert.throws(
     () =>

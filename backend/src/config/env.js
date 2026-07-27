@@ -63,10 +63,20 @@ const envSchema = z
       .max(1440, 'Un token de recuperación no debería durar más de un día')
       .default(60),
 
-    // Proveedor de mail. `console` imprime el mail en el log del servidor
-    // (desarrollo), `noop` lo descarta avisando. Hoy NO hay proveedor real:
-    // ver docs/MAIL.md.
-    MAIL_DRIVER: z.enum(['console', 'noop']).optional(),
+    // Proveedor de mail:
+    //   console → imprime el mail en el log del servidor (desarrollo)
+    //   noop    → lo descarta avisando (default en producción)
+    //   brevo   → envía de verdad; requiere BREVO_API_KEY y MAIL_FROM
+    // Ver docs/MAIL.md.
+    MAIL_DRIVER: z.enum(['console', 'noop', 'brevo']).optional(),
+
+    BREVO_API_KEY: z.string().min(20).optional(),
+
+    // Casilla remitente. Con Brevo tiene que ser una dirección VERIFICADA en
+    // el panel (Senders → Add a sender + click en el mail de confirmación).
+    // Un Gmail sirve: no hace falta dominio propio.
+    MAIL_FROM: z.string().email().optional(),
+    MAIL_FROM_NOMBRE: z.string().max(80).default('Mueblería Hermanos Jota'),
   })
   .superRefine((env, ctx) => {
     if (env.JWT_SECRET === env.JWT_REFRESH_SECRET) {
@@ -76,6 +86,29 @@ const envSchema = z
         message:
           'JWT_REFRESH_SECRET debe ser distinta de JWT_SECRET (si son iguales, un access token sirve como refresh token)',
       })
+    }
+
+    // Fail-fast: con MAIL_DRIVER=brevo pero sin credenciales, el servidor
+    // arrancaría bien y el flujo de recuperación fallaría recién cuando un
+    // usuario real lo use — y en silencio, porque el error se traga a
+    // propósito para no delatar qué cuentas existen. Un arranque roto se
+    // detecta en minutos; esto se detectaría con un reclamo.
+    if (env.MAIL_DRIVER === 'brevo') {
+      if (!env.BREVO_API_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['BREVO_API_KEY'],
+          message: 'MAIL_DRIVER=brevo requiere BREVO_API_KEY',
+        })
+      }
+      if (!env.MAIL_FROM) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['MAIL_FROM'],
+          message:
+            'MAIL_DRIVER=brevo requiere MAIL_FROM (una casilla verificada en Brevo)',
+        })
+      }
     }
   })
 

@@ -10,6 +10,7 @@
     "seed": "node src/seed.js",
     "seed:admin": "node src/seed.js --admin",
     "migrate:001": "node src/migrations/001-estados-pedido.js",
+    "migrate:002": "node src/migrations/002-saldo-inicial-stock.js",
     "test": "node --test --test-concurrency=1 tests/",
     "lint": "eslint ."
   },

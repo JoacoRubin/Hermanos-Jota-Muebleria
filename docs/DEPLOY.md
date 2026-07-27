@@ -15,7 +15,19 @@ NODE_ENV=development
 PORT=5000
 
 # Cadena de conexión de MongoDB Atlas.
-MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/hermanos-jota?retryWrites=true&w=majority
+#
+# ⚠️ EL NOMBRE DE LA BASE VA AL FINAL DE LA RUTA Y NO ES DECORATIVO: Mongo la
+# crea sola con la primera escritura, así que un typo no da error — te deja
+# trabajando en una base vacía que nadie mira.
+#
+# Estado verificado al 2026-07-27: los datos de la aplicación viven en
+# `hermanos-jota-dev`, y esa misma base es la que sirve producción. La base
+# `hermanos-jota` NO existe (cero colecciones). El valor autoritativo de
+# producción es el que esté cargado en Render → Environment, no este ejemplo.
+#
+# Mientras dev y producción compartan base, cada prueba local escribe en la
+# base que sirve al sitio publicado. Ver la sección 9.
+MONGO_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/<nombre-de-la-base>?retryWrites=true&w=majority
 
 # Firma de los access tokens. Mínimo 32 caracteres.
 JWT_SECRET=
@@ -65,11 +77,17 @@ APP_URL=https://vermillion-gnome-5f2469.netlify.app
 # Cuánto vive el token de recuperación. Default 60.
 PASSWORD_RESET_TTL_MINUTES=60
 
-# Proveedor de mail: "console" imprime el mail en el log, "noop" lo descarta.
-# NO HAY PROVEEDOR REAL CONFIGURADO todavía — ver docs/MAIL.md.
+# Proveedor de mail: "console" imprime el mail en el log, "noop" lo descarta,
+# "brevo" envía de verdad.
 # Default: "console" en desarrollo, "noop" en producción. No pongas "console"
 # en producción: dejaría links de recuperación en los logs.
+#
+# Para activar el envío real (gratis, sin dominio propio) ver docs/MAIL.md.
+# Con MAIL_DRIVER=brevo, estas dos son OBLIGATORIAS o el servidor no arranca:
 MAIL_DRIVER=noop
+BREVO_API_KEY=
+MAIL_FROM=
+MAIL_FROM_NOMBRE=Mueblería Hermanos Jota
 ```
 
 Generá cada secreto con un valor aleatorio **distinto**:
@@ -208,7 +226,9 @@ un parche, y conviene tenerlo claro.
       quien arma el link del mail de recuperación)
 - [ ] `VITE_API_URL` apuntando al backend correcto en Netlify
 - [ ] Secret `RENDER_URL` cargado en GitHub Actions
-- [ ] Migración de estados corrida: `npm run migrate:001 -- --apply`
+- [ ] Migraciones corridas (las dos son idempotentes y simulan por defecto):
+      `npm run migrate:001 -- --apply` (renombre de estados) y
+      `npm run migrate:002 -- --apply` (saldo inicial del libro de stock)
 - [ ] Decidido qué hacer con el mail: hoy `MAIL_DRIVER=noop` en producción
       significa que **la recuperación de contraseña no envía nada**
       (ver `docs/MAIL.md`)
@@ -220,8 +240,14 @@ un parche, y conviene tenerlo claro.
 
 ## 8. El asistente (RAG)
 
-El widget 💬 vive en `ModernLayout`, así que aparece en **todas** las páginas sin
-tocar ninguna.
+El widget 💬 se monta en `App.jsx`, hermano de `<Routes>`, así que aparece en
+**todas** las páginas sin tocar ninguna.
+
+Estuvo dentro de `ModernLayout` y hubo que sacarlo: como cada página renderiza
+su propio `<ModernLayout>`, al navegar React desmontaba el widget entero y la
+conversación se perdía en cada click del menú. Si vuelve a colgar de una
+página, el bug vuelve con él — hay tests en
+`client/src/components/AsistentePersistencia.test.jsx` que lo cazan.
 
 El circuito es: widget React → `POST /api/asistente` (tu Express) → `/ask` del
 microservicio RAG → modelo. El navegador **nunca** habla con el RAG ni ve su URL
@@ -237,3 +263,52 @@ hereda gratis el CORS, el rate limiting y el manejo de errores de la API.
 
 Que falte `RAG_API_URL` **no impide arrancar el servidor**: el asistente es una
 función accesoria, no crítica. El resto del sitio funciona igual.
+
+El contrato con el microservicio y lo que queda abierto —autenticarlo, y
+decidir si es una FAQ sin estado o una conversación con contexto— están en
+**[docs/ASISTENTE.md](ASISTENTE.md)**.
+
+---
+
+## 9. Bases de datos: hoy hay una sola
+
+Verificado el 2026-07-27: **desarrollo y producción comparten la base
+`hermanos-jota-dev`** en el cluster de Atlas. La base `hermanos-jota` que este
+documento usaba de ejemplo nunca se creó.
+
+Consecuencia práctica: cada usuario de prueba, cada pedido de juguete y cada
+mensaje de contacto que generes en local entra a la base que sirve al sitio
+publicado. El nombre termina en `-dev`, pero no es un entorno aislado.
+
+### Qué protege hoy
+
+El camino destructivo grave está tapado: `npm run seed -- --force` se frena si
+la base **no es local**, y exige el flag explícito `--si-es-remota`.
+
+Esa guarda mira el host de la `MONGO_URI`, **no** `NODE_ENV`. Es a propósito:
+`NODE_ENV` describe cómo arrancó el proceso, no a qué base se le escribe, así
+que un script corrido a mano contra Atlas con `NODE_ENV=development` pasaba
+cualquier `if (isProduction)` y borraba datos reales.
+
+### Cuándo hay que separarlas
+
+**Antes del primer pedido de una persona real.**
+
+Hasta ahí, separar es gratis: los 11 productos y el admin se regeneran con
+`npm run seed` y `npm run seed:admin`, así que no hay nada que migrar. Después,
+pasa a ser una migración con datos de un cliente adentro.
+
+Cómo hacerlo, cuando toque:
+
+```powershell
+# 1. Render → Environment → MONGO_URI, cambiar el nombre a hermanos-jota-prod
+# 2. Sembrar la base nueva
+$env:MONGO_URI="...la nueva de prod..."
+npm run seed
+npm run seed:admin
+Remove-Item Env:\MONGO_URI
+
+# 3. En backend/.env, apuntar a hermanos-jota-local y sembrarla igual
+```
+
+`hermanos-jota-dev` queda huérfana y se puede borrar desde Atlas.

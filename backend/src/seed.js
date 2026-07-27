@@ -18,10 +18,12 @@ const Product = require('./models/Product')
 const StockMovement = require('./models/StockMovement')
 const User = require('./models/User')
 const productsSeed = require('./data/products.seed')
+const { esBaseLocal, hostDe } = require('./utils/mongoUri')
 
 const args = process.argv.slice(2)
 const force = args.includes('--force')
 const soloAdmin = args.includes('--admin')
+const confirmadoRemoto = args.includes('--si-es-remota')
 
 async function seedProductos() {
   const existentes = await Product.countDocuments()
@@ -35,12 +37,34 @@ async function seedProductos() {
   }
 
   if (existentes > 0) {
-    if (env.isProduction) {
+    // ──────────────────────────────────────────────────────────────────────
+    // LA GUARDA MIRA A DÓNDE APUNTÁS, NO UN CARTEL QUE PODÉS OLVIDAR.
+    //
+    // Antes esto decía `if (env.isProduction)`. El problema: `NODE_ENV` es una
+    // etiqueta de TU máquina, no una propiedad de la base. Con un
+    // `$env:MONGO_URI` apuntando a Atlas y `NODE_ENV=development` en local
+    // —que es el caso normal cuando alguien corre un script contra la base
+    // real— la guarda no se disparaba y el `deleteMany` se llevaba puesto el
+    // catálogo de producción.
+    //
+    // Peor todavía en este proyecto, donde desarrollo y producción comparten
+    // la misma base: la condición vieja NUNCA iba a saltar.
+    //
+    // Ahora se mira el host de la URI. Si no es local, hay que decirlo
+    // explícitamente con `--si-es-remota`. Un tipeo de más contra borrar el
+    // catálogo real es un intercambio que conviene.
+    // ──────────────────────────────────────────────────────────────────────
+    if (!esBaseLocal(env.MONGO_URI) && !confirmadoRemoto) {
       throw new Error(
-        'Negado: --force borra el catálogo y NODE_ENV es "production". ' +
-          'Si de verdad querés hacerlo, hacelo a mano y con backup.'
+        `Negado: --force borra TODO el catálogo y la base no es local.\n` +
+          `  Host: ${hostDe(env.MONGO_URI)}\n` +
+          `  Base: ${mongoose.connection.name}\n` +
+          `  Productos que se borrarían: ${existentes}\n\n` +
+          'Si de verdad querés hacerlo, agregá --si-es-remota (y hacé backup antes):\n' +
+          '  npm run seed -- --force --si-es-remota'
       )
     }
+
     await Product.deleteMany({})
     // Los movimientos del catálogo viejo apuntan a productos que ya no
     // existen: se limpian junto con ellos para que el libro mayor no quede
