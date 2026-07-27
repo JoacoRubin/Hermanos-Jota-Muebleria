@@ -9,6 +9,11 @@ const { esBaseLocal, hostDe } = require('../src/utils/mongoUri')
  * `esBaseLocal` decide si `npm run seed -- --force` puede borrar el catálogo
  * sin preguntar. Un falso positivo acá no rompe un test funcional: borra datos
  * reales y te enterás después.
+ *
+ * ⚠️ TODOS los hosts y credenciales de este archivo son INVENTADOS, y tienen
+ * que seguir siéndolo. Poner el cluster real "para que sea más realista" no
+ * agrega nada —lo que se prueba es un parser de strings— y publica en un repo
+ * la dirección de la base de producción. Ya pasó una vez.
  */
 
 test('reconoce las bases locales', () => {
@@ -27,9 +32,9 @@ test('reconoce las bases locales', () => {
 
 test('Atlas NUNCA es local', () => {
   const remotas = [
-    'mongodb+srv://user:pass@cluster0.jo6svin.mongodb.net/hermanos-jota',
-    'mongodb+srv://user:pass@cluster0.jo6svin.mongodb.net/hermanos-jota-dev?appName=Cluster0',
-    'mongodb://user:pass@ac-orsixcl-shard-00-00.jo6svin.mongodb.net:27017/hj',
+    'mongodb+srv://user:pass@cluster0.ejemplo.mongodb.net/hermanos-jota',
+    'mongodb+srv://user:pass@cluster0.ejemplo.mongodb.net/hermanos-jota-dev?appName=Cluster0',
+    'mongodb://user:pass@ac-shard-00-00.ejemplo.mongodb.net:27017/hj',
   ]
 
   for (const uri of remotas) {
@@ -40,9 +45,9 @@ test('Atlas NUNCA es local', () => {
 test('una contraseña que contenga "localhost" no engaña a la guarda', () => {
   // El host se lee después del ÚLTIMO `@`, así que una credencial con
   // caracteres raros no puede hacerse pasar por el host.
-  const uri = 'mongodb+srv://admin:localhost@cluster0.jo6svin.mongodb.net/hj'
+  const uri = 'mongodb+srv://admin:localhost@cluster0.ejemplo.mongodb.net/hj'
 
-  assert.equal(hostDe(uri), 'cluster0.jo6svin.mongodb.net')
+  assert.equal(hostDe(uri), 'cluster0.ejemplo.mongodb.net')
   assert.equal(esBaseLocal(uri), false)
 })
 
@@ -65,13 +70,13 @@ test('ante una URI ilegible, asume remota', () => {
 
 test('hostDe extrae el host sin credenciales ni base ni query', () => {
   assert.equal(
-    hostDe('mongodb+srv://u:p@cluster0.jo6svin.mongodb.net/hj?appName=X'),
-    'cluster0.jo6svin.mongodb.net'
+    hostDe('mongodb+srv://u:p@cluster0.ejemplo.mongodb.net/hj?appName=X'),
+    'cluster0.ejemplo.mongodb.net'
   )
   assert.equal(hostDe('mongodb://localhost:27017/hj'), 'localhost:27017')
 })
 
 test('hostDe nunca devuelve la contraseña', () => {
-  const uri = 'mongodb+srv://admin:SuperSecreto123@cluster0.mongodb.net/hj'
-  assert.equal(hostDe(uri).includes('SuperSecreto123'), false)
+  const uri = 'mongodb+srv://admin:UnaClaveInventada@cluster0.ejemplo.mongodb.net/hj'
+  assert.equal(hostDe(uri).includes('UnaClaveInventada'), false)
 })
