@@ -23,9 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # La versión sale de `backend/.node-version`, el MISMO archivo que lee
+      # Render. Tenerla escrita acá como número suelto es cómo se llega a
+      # testear en una versión y desplegar en otra: pasó, y producción corrió
+      # seis majors por delante de la suite durante varios deploys.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: backend/.node-version
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
@@ -48,9 +52,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Ídem: `client/.node-version` es el que también lee Netlify.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: client/.node-version
           cache: npm
           cache-dependency-path: client/package-lock.json
 

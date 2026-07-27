@@ -140,7 +140,29 @@ tienen que volver a iniciar sesión. Es lo esperado.
 | Root Directory | `backend` |
 | Build Command | `npm ci` |
 | Start Command | `npm start` |
-| Node Version | 20 |
+| Node Version | la de `backend/.node-version` |
+
+> **Build Command debe ser `npm ci`, no `npm install`.** `npm ci` instala
+> exactamente lo que dice el lockfile; `npm install` puede resolver una
+> dependencia transitiva distinta en producción que en tu máquina.
+
+### La versión de Node está fijada, y hay una razón
+
+`backend/.node-version` y `client/.node-version` son la **única** fuente de
+verdad: los leen Render, Netlify y el CI (`node-version-file` en
+`ci.yml`). Cambiar el número en un solo lugar alcanza para los tres.
+
+No alcanza con el campo `engines` de `package.json`. Dice `>=20.6.0`, que no
+tiene techo, así que Render instalaba "la más nueva que cumpla" — y durante
+varios deploys **producción corrió Node 26 mientras la suite de tests corría
+en Node 20**. Seis majors de diferencia sobre un código que usa `fetch`,
+`AbortSignal.timeout` y el runner de tests nativo.
+
+El problema de fondo no era la versión: era que un despliegue podía cambiar de
+runtime solo, sin que nadie tocara nada.
+
+Para subir de versión, hacelo deliberadamente: cambiás los dos archivos, corrés
+la suite completa, y recién si pasa, deployás.
 
 Variables de entorno a cargar: todas las de la sección 1, con
 `NODE_ENV=production`.
