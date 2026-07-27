@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useUI } from '../contexts/UIContext'
 import ModernLayout from '../components/ModernLayout'
+import PasswordInput from '../components/ui/PasswordInput'
 
 function Login() {
   const navigate = useNavigate()
@@ -72,8 +73,7 @@ function Login() {
 
             <div className="form-group">
               <label htmlFor="password">Contraseña *</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="password"
                 name="password"
                 value={formData.password}
@@ -101,7 +101,9 @@ function Login() {
             </p>
             <p>
               ¿No tenés cuenta?{' '}
-              <Link to="/registro" className="auth-link">
+              {/* Se reenvía el `state` para no perder a dónde había que volver
+                  al cambiar entre login y registro. */}
+              <Link to="/registro" state={location.state} className="auth-link">
                 Registrate acá
               </Link>
             </p>

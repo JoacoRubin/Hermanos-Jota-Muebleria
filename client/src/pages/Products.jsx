@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import ProductService from '../services/productService'
 import ModernLayout from '../components/ModernLayout'
 import ProductCard from '../components/products/ProductCard'
-import { useCart } from '../contexts/CartContext'
-import { useUI } from '../contexts/UIContext'
+import useAgregarAlCarrito from '../hooks/useAgregarAlCarrito'
 import { CATEGORIAS } from '../constants'
 
 function Products() {
-  const { addToCart } = useCart()
-  const { toast } = useUI()
+  // Si no hay sesión, esto no agrega nada: manda a crear la cuenta.
+  const handleAgregar = useAgregarAlCarrito()
 
   const [productos, setProductos] = useState([])
   const [meta, setMeta] = useState(null)
@@ -43,11 +42,6 @@ function Products() {
   useEffect(() => {
     cargarProductos()
   }, [cargarProductos])
-
-  const handleAgregar = (producto) => {
-    addToCart(producto)
-    toast.success(`${producto.nombre} agregado al carrito`)
-  }
 
   const handleCambiarCategoria = (evento) => {
     setCategoria(evento.target.value)

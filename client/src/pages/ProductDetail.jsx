@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import ProductService from '../services/productService'
 import ModernLayout from '../components/ModernLayout'
-import { useCart } from '../contexts/CartContext'
+import useAgregarAlCarrito from '../hooks/useAgregarAlCarrito'
 import { useAuth } from '../contexts/AuthContext'
 import { useUI } from '../contexts/UIContext'
 import { formatearPrecio } from '../constants'
@@ -10,7 +10,6 @@ import { formatearPrecio } from '../constants'
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { addToCart } = useCart()
   const { isAdmin } = useAuth()
   const { toast, confirm } = useUI()
 
@@ -38,10 +37,9 @@ function ProductDetail() {
     cargarProducto()
   }, [cargarProducto])
 
-  const handleAgregar = () => {
-    addToCart(producto)
-    toast.success(`${producto.nombre} agregado al carrito`)
-  }
+  // Si no hay sesión, esto no agrega nada: manda a crear la cuenta.
+  const agregarAlCarrito = useAgregarAlCarrito()
+  const handleAgregar = () => agregarAlCarrito(producto)
 
   const handleEliminar = async () => {
     const confirmado = await confirm({

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import AuthService from '../services/authService'
 import ModernLayout from '../components/ModernLayout'
+import PasswordInput from '../components/ui/PasswordInput'
 import { useUI } from '../contexts/UIContext'
 
 /**
@@ -98,8 +99,7 @@ function ResetPassword() {
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
               <label htmlFor="password">Contraseña nueva *</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="password"
                 name="password"
                 value={formData.password}
@@ -115,8 +115,7 @@ function ResetPassword() {
 
             <div className="form-group">
               <label htmlFor="confirmar">Repetila *</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="confirmar"
                 name="confirmar"
                 value={formData.confirmar}

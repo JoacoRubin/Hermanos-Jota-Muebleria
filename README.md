@@ -134,19 +134,42 @@ Hermanos-Jota-Muebleria/
 
 **El frontend no es una capa de seguridad.** `ProtectedRoute` evita que el
 usuario llegue a una pantalla que igual le va a fallar; la autorización real
-está en `requireRole('admin')` del backend. Hacen falta las dos, y no son
-intercambiables.
+está en `requireRole('admin')`. Hacen falta las dos y no son intercambiables.
 
-**El precio lo pone el servidor.** Al crear un pedido, el cliente sólo manda
-`producto` y `cantidad`. El nombre, el precio y la imagen se leen de la base.
+**El precio lo pone el servidor.** Al crear un pedido el cliente sólo manda
+`producto` y `cantidad`. Nombre, precio e imagen se leen de la base.
 
-**El access token vive en memoria.** Dura 15 minutos y nunca toca
-`localStorage`. El refresh token va en una cookie `httpOnly` de 7 días, rota en
-cada uso y, si se detecta reutilización, se revocan todas las sesiones del
-usuario.
+**El stock exacto no sale de la API.** El catálogo devuelve `stockStatus` y
+`"Últimas 2 unidades"` calculados en el servidor, nunca el número. Filtrarlo en
+el frontend no habría ocultado nada: el dato viaja igual en el JSON. La
+decisión vive en el serializer → [`serializers/index.js`](backend/src/serializers/index.js)
 
-**Todo lo que entra se valida con zod, en modo estricto.** Un campo no
-declarado hace fallar la petición. Eso es lo que elimina el mass assignment.
+**Cancelar un pedido devuelve el stock exactamente una vez.** La condición
+viaja *dentro* del `findOneAndUpdate`, así que de N cancelaciones simultáneas
+gana una sola. Leer, verificar y después escribir habría inflado el inventario
+con unidades que no existen →
+[cinco cancelaciones en paralelo](backend/tests/orderLifecycle.test.js)
+
+**"Olvidé mi contraseña" no revela si la cuenta existe.** Misma respuesta y
+mismo status exista o no el email. El token se guarda hasheado, vence en una
+hora y se quema al usarlo → [`passwordReset.test.js`](backend/tests/passwordReset.test.js)
+
+**El LLM es una fuente no confiable, igual que el navegador.** El asistente RAG
+decide *qué* productos recomendar; el precio y la disponibilidad los relee
+Express de MongoDB. Un prompt injection no puede cambiar lo que el cliente ve
+que va a pagar → [el test que lo demuestra](backend/tests/asistenteContrato.test.js)
+
+**Se valida lo que entra y también lo que sale del modelo**, con zod en modo
+estricto. Un campo no declarado hace fallar la petición: eso elimina el mass
+assignment.
+
+**Las guardas destructivas miran el recurso, no el entorno.** `seed --force` se
+frena si la URI no apunta a una base local. `NODE_ENV` describe cómo arrancó el
+proceso, no a qué base le estás por borrar el catálogo.
+
+**El access token vive en memoria.** 15 minutos, nunca en `localStorage`. El
+refresh va en cookie `httpOnly`, rota en cada uso, y si se detecta reutilización
+se revocan todas las sesiones del usuario.
 
 ---
 
@@ -165,7 +188,7 @@ Vitest + Testing Library
 | Entorno | Frontend | API |
 | --- | --- | --- |
 | Local | http://localhost:3000 | http://localhost:5000 |
-| Producción | https://vermillion-gnome-5f2469.netlify.app | https://hermanos-jota-muebleria-1.onrender.com |
+| Producción | https://vermillion-gnome-5f2469.netlify.app | https://hermanos-jota-muebleria.onrender.com |
 
 ### Endpoints
 

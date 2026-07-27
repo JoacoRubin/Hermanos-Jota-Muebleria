@@ -1,15 +1,22 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useUI } from '../contexts/UIContext'
 import ModernLayout from '../components/ModernLayout'
+import PasswordInput from '../components/ui/PasswordInput'
 
 const MIN_PASSWORD = 8
 
 function Register() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { register } = useAuth()
   const { toast } = useUI()
+
+  // Quien llega desde "Agregar al carrito" viene con el producto que quería y
+  // el motivo. Devolverlo al home después de registrarse lo obligaría a buscar
+  // de nuevo lo que ya había encontrado.
+  const destino = location.state?.from?.pathname || '/'
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -53,7 +60,7 @@ function Register() {
       const { confirmPassword: _descartado, ...userData } = formData
       const usuario = await register(userData)
       toast.success(`¡Bienvenido a Hermanos Jota, ${usuario.nombre.split(' ')[0]}!`)
-      navigate('/')
+      navigate(destino, { replace: true })
     } catch (err) {
       setError(err.detalle || err.message)
     } finally {
@@ -67,6 +74,13 @@ function Register() {
         <div className="auth-card">
           <h1 className="auth-title">Crear cuenta</h1>
           <p className="auth-subtitle">Unite a la familia Hermanos Jota</p>
+
+          {/* El motivo por el que lo mandamos acá. Sin esto, el usuario que
+              apretó "Agregar al carrito" aparece en un formulario de registro
+              sin saber por qué. */}
+          {location.state?.message && (
+            <div className="info-message">{location.state.message}</div>
+          )}
 
           {error && (
             <div className="error-message" role="alert">
@@ -107,8 +121,7 @@ function Register() {
 
             <div className="form-group">
               <label htmlFor="password">Contraseña *</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="password"
                 name="password"
                 value={formData.password}
@@ -127,8 +140,7 @@ function Register() {
 
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirmar contraseña *</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="confirmPassword"
                 name="confirmPassword"
                 value={formData.confirmPassword}
@@ -152,7 +164,11 @@ function Register() {
           <div className="auth-footer">
             <p>
               ¿Ya tenés cuenta?{' '}
-              <Link to="/login" className="auth-link">
+              {/* Se reenvía el `state`: si vino de "Agregar al carrito" y en
+                  realidad ya tenía cuenta, el login tiene que devolverlo al
+                  mismo producto. Sin esto, cambiar de pantalla pierde el
+                  contexto y termina en el home. */}
+              <Link to="/login" state={location.state} className="auth-link">
                 Iniciá sesión acá
               </Link>
             </p>
