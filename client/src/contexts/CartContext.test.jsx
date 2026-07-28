@@ -10,6 +10,15 @@ vi.mock('./AuthContext', () => ({
   useAuth: () => ({ user: usuarioActual }),
 }))
 
+// `revalidarTopes` le vuelve a preguntar al servidor por cada ítem. Acá se
+// controla qué contesta: es todo el punto de esos tests.
+const getById = vi.fn()
+vi.mock('../services/productService', () => ({
+  default: {
+    getById: (...args) => getById(...args),
+  },
+}))
+
 function Sonda() {
   const cart = useCart()
   // Se expone la API del contexto para poder invocarla desde el test.
@@ -62,6 +71,7 @@ const MESA = {
 beforeEach(() => {
   usuarioActual = null
   globalThis.__cart = null
+  getById.mockReset()
 })
 
 describe('CartContext', () => {
@@ -217,5 +227,105 @@ describe('CartContext', () => {
     act(() => globalThis.__cart.clearCart())
 
     expect(localStorage.getItem('cart_u1')).toBeNull()
+  })
+
+  // ── Regresión: el tope era una foto que no vencía nunca ──────────────────
+  //
+  // `addToCart` guarda el `tope` DENTRO del ítem, y el ítem vive en
+  // localStorage. Si el admin reponía stock, ese número quedaba viejo para
+  // siempre: sobrevivía al F5 y al logout, y el "+" seguía bloqueado.
+  describe('revalidarTopes', () => {
+    it('sube el tope cuando el admin repuso stock', async () => {
+      renderCarrito()
+
+      // Quedaban 3: el carrito anota tope 3 y no deja pasar de ahí.
+      act(() => globalThis.__cart.addToCart(SOFA))
+      act(() => globalThis.__cart.updateQuantity('p1', 10))
+      expect(screen.getByTestId('total-items')).toHaveTextContent('3')
+
+      // El admin repone: el producto ya no está en zona de escasez.
+      getById.mockResolvedValue({
+        ...SOFA,
+        stockStatus: 'disponible',
+        unidadesRestantes: null,
+      })
+
+      await act(async () => {
+        await globalThis.__cart.revalidarTopes()
+      })
+
+      act(() => globalThis.__cart.updateQuantity('p1', 10))
+      expect(screen.getByTestId('total-items')).toHaveTextContent('10')
+    })
+
+    it('recorta la cantidad cuando quedan menos unidades que las pedidas', async () => {
+      renderCarrito()
+
+      act(() => globalThis.__cart.addToCart(SOFA))
+      act(() => globalThis.__cart.updateQuantity('p1', 3))
+
+      getById.mockResolvedValue({ ...SOFA, unidadesRestantes: 1 })
+
+      let resultado
+      await act(async () => {
+        resultado = await globalThis.__cart.revalidarTopes()
+      })
+
+      expect(screen.getByTestId('total-items')).toHaveTextContent('1')
+      expect(resultado.ajustados).toEqual([
+        { nombre: 'Sofá Patagonia', cantidad: 1 },
+      ])
+    })
+
+    it('saca del carrito lo que se quedó sin stock', async () => {
+      renderCarrito()
+
+      act(() => globalThis.__cart.addToCart(SOFA))
+      act(() => globalThis.__cart.addToCart(MESA))
+
+      getById.mockImplementation((id) =>
+        Promise.resolve(
+          id === 'p1' ? { ...SOFA, disponible: false, unidadesRestantes: 0 } : MESA
+        )
+      )
+
+      let resultado
+      await act(async () => {
+        resultado = await globalThis.__cart.revalidarTopes()
+      })
+
+      expect(screen.getByTestId('nombres')).toHaveTextContent('Mesa Pampa')
+      expect(screen.getByTestId('nombres')).not.toHaveTextContent('Sofá')
+      expect(resultado.agotados).toEqual([{ nombre: 'Sofá Patagonia' }])
+    })
+
+    // Un fallo de red no puede vaciar el carrito de nadie: el error es del
+    // lado del cliente y el carrito es lo único que el usuario ya eligió.
+    it('un producto que no responde conserva su tope', async () => {
+      renderCarrito()
+
+      act(() => globalThis.__cart.addToCart(SOFA))
+      act(() => globalThis.__cart.updateQuantity('p1', 3))
+
+      getById.mockRejectedValue(new Error('Network down'))
+
+      let resultado
+      await act(async () => {
+        resultado = await globalThis.__cart.revalidarTopes()
+      })
+
+      expect(screen.getByTestId('total-items')).toHaveTextContent('3')
+      expect(resultado).toEqual({ ajustados: [], agotados: [] })
+    })
+
+    it('con el carrito vacío no le pregunta nada al servidor', async () => {
+      renderCarrito()
+
+      await act(async () => {
+        await globalThis.__cart.revalidarTopes()
+      })
+
+      expect(getById).not.toHaveBeenCalled()
+    })
   })
 })

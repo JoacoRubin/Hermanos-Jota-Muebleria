@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { useUI } from '../contexts/UIContext'
@@ -16,13 +16,47 @@ import { formatearPrecio } from '../constants'
  * lógica de negocio y fetching mezclados en el mismo archivo.
  */
 function Cart() {
-  const { cartItems, removeFromCart, updateQuantity, clearCart, totalPrecio } =
-    useCart()
+  const {
+    cartItems,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    revalidarTopes,
+    totalPrecio,
+  } = useCart()
   const { toast, confirm } = useUI()
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(false)
   const [mostrarCheckout, setMostrarCheckout] = useState(false)
+
+  /**
+   * Al entrar al carrito se le vuelve a preguntar al servidor cuánto se puede
+   * pedir de cada ítem.
+   *
+   * El `tope` de cada ítem se guarda en localStorage cuando se agrega, así que
+   * sin esto era una foto que no vencía nunca: si el admin reponía stock, el
+   * "+" seguía bloqueado con el número viejo hasta que el usuario volviera al
+   * catálogo y lo agregara de nuevo. Ver `revalidarTopes` en CartContext.
+   *
+   * Corre UNA vez por visita a la pantalla, no en cada cambio del carrito: el
+   * ref evita que agregar o quitar unidades dispare una tanda de pedidos.
+   */
+  const yaRevalidado = useRef(false)
+
+  useEffect(() => {
+    if (yaRevalidado.current) return
+    yaRevalidado.current = true
+
+    revalidarTopes().then(({ ajustados, agotados }) => {
+      for (const { nombre } of agotados) {
+        toast.error(`"${nombre}" se quedó sin stock y se quitó del carrito`)
+      }
+      for (const { nombre, cantidad } of ajustados) {
+        toast.info(`Quedan ${cantidad} de "${nombre}": ajustamos la cantidad`)
+      }
+    })
+  }, [revalidarTopes, toast])
 
   const handleVaciar = async () => {
     const confirmado = await confirm({
