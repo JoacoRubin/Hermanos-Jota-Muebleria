@@ -6,7 +6,6 @@ const { serializeProduct, serializeStockMovement } = require('../serializers')
 const { buildMeta, skipFor } = require('../utils/pagination')
 const { validated } = require('../middleware/validate')
 const { aplicarMovimiento } = require('../services/stock.service')
-const { env } = require('../config')
 
 /**
  * ¿Le mostramos el número exacto de unidades a quien está preguntando?
@@ -15,6 +14,43 @@ const { env } = require('../config')
  * por `optionalAuth`, que no exige sesión.
  */
 const puedeVerStock = (req) => req.user?.role === 'admin'
+
+/**
+ * Política de caché de las lecturas del catálogo.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * POR QUÉ NO HAY `max-age` MAYOR A CERO
+ * ────────────────────────────────────────────────────────────────────────────
+ * Antes esto decía `public, max-age=300` cuando la respuesta era pública, y el
+ * efecto era el que se reportó: el admin reponía stock y durante CINCO MINUTOS
+ * el catálogo seguía mostrando "Sin stock" —para él y para todo el mundo—.
+ * El navegador ni siquiera preguntaba: tenía permiso para no hacerlo.
+ *
+ * `max-age=0, must-revalidate` no apaga la caché, la obliga a revalidar. La
+ * respuesta se sigue guardando; lo que cambia es que antes de reusarla hay que
+ * preguntar. Express ya emite un ETag por cada `res.json`, así que el navegador
+ * manda `If-None-Match` y el server contesta 304 SIN CUERPO cuando nada
+ * cambió. Se ahorran los bytes del catálogo entero, que es de donde venía casi
+ * todo el beneficio, y desaparece la ventana de datos viejos.
+ *
+ * Y esto NO depende de `NODE_ENV`. La versión anterior sí, y por eso el bug era
+ * invisible en desarrollo: la única forma de encontrarlo era en producción,
+ * con un usuario real mirando un producto agotado que ya no lo estaba.
+ *
+ * Con `incluirStock` la respuesta lleva el número exacto de unidades y no puede
+ * guardarse en ningún lado: una caché compartida podría servirle la vista del
+ * admin a un anónimo. Ese es el envenenamiento de caché clásico por variar el
+ * cuerpo según el rol, y `Vary: Authorization` solo lo mitiga si el
+ * intermediario lo respeta. `no-store` no depende de la buena fe de nadie.
+ */
+function aplicarPoliticaDeCache(res, incluirStock) {
+  res.set(
+    'Cache-Control',
+    incluirStock ? 'no-store' : 'public, max-age=0, must-revalidate'
+  )
+  // Se declara la dependencia del header igual, para el caso público.
+  res.set('Vary', 'Authorization')
+}
 
 // @desc    Listar productos (paginado y filtrable)
 // @route   GET /api/productos
@@ -46,16 +82,7 @@ exports.getAll = asyncHandler(async (req, res) => {
 
   const incluirStock = puedeVerStock(req)
 
-  // El cacheo público se apaga cuando la respuesta lleva stock exacto: si no,
-  // un proxy podría guardar la vista del admin y servírsela a un anónimo.
-  // Es el clásico envenenamiento de caché por variar el body según el rol.
-  if (env.isProduction && !incluirStock) {
-    res.set('Cache-Control', 'public, max-age=300')
-  } else {
-    res.set('Cache-Control', 'no-store')
-  }
-  // Y se declara la dependencia del header, por las dudas.
-  res.set('Vary', 'Authorization')
+  aplicarPoliticaDeCache(res, incluirStock)
 
   res.json({
     data: products.map((producto) =>
@@ -74,10 +101,10 @@ exports.getById = asyncHandler(async (req, res) => {
   const product = await Product.findById(id).lean()
   if (!product) throw ApiError.notFound('Producto no encontrado')
 
-  res.set('Vary', 'Authorization')
-  res.json({
-    data: serializeProduct(product, { incluirStock: puedeVerStock(req) }),
-  })
+  const incluirStock = puedeVerStock(req)
+
+  aplicarPoliticaDeCache(res, incluirStock)
+  res.json({ data: serializeProduct(product, { incluirStock }) })
 })
 
 // @desc    Crear producto

@@ -209,6 +209,75 @@ test('filtra por categoría', async () => {
   assert.equal(res.body.data[0].nombre, 'Mesa')
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Frescura del catálogo.
+//
+// Regresión de un bug reportado en producción: el listado público salía con
+// `Cache-Control: public, max-age=300`, así que el admin reponía stock y
+// durante cinco minutos el catálogo seguía diciendo "Sin stock". Y era
+// invisible en desarrollo, porque la política dependía de NODE_ENV.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('el catálogo público se puede cachear pero exige revalidar', async () => {
+  await crearProducto()
+
+  const res = await request(app).get('/api/productos')
+
+  assert.equal(res.status, 200)
+
+  const cacheControl = res.headers['cache-control']
+  assert.ok(cacheControl.includes('must-revalidate'), cacheControl)
+
+  // Cualquier `max-age` distinto de cero reabre la ventana de datos viejos.
+  const maxAge = /max-age=(\d+)/.exec(cacheControl)
+  assert.ok(maxAge, `falta max-age en "${cacheControl}"`)
+  assert.equal(maxAge[1], '0')
+})
+
+test('reponer stock invalida el ETag del catálogo público', async () => {
+  const producto = await crearProducto({ stock: 0 })
+  const { token } = await crearAdmin(app)
+
+  const antes = await request(app).get('/api/productos')
+  assert.equal(antes.body.data[0].stockStatus, 'agotado')
+  assert.ok(antes.headers.etag, 'Express tiene que emitir un ETag')
+
+  // Con el ETag viejo y sin cambios, el server ahorra el cuerpo.
+  const sinCambios = await request(app)
+    .get('/api/productos')
+    .set('If-None-Match', antes.headers.etag)
+  assert.equal(sinCambios.status, 304)
+
+  await request(app)
+    .post(`/api/productos/${producto._id}/stock`)
+    .set('Authorization', `Bearer ${token}`)
+    .send({ cantidad: 50, motivo: 'reposicion' })
+    .expect(200)
+
+  // Y con el stock movido, el MISMO ETag ya no matchea: 200 con datos nuevos.
+  const despues = await request(app)
+    .get('/api/productos')
+    .set('If-None-Match', antes.headers.etag)
+
+  assert.equal(despues.status, 200)
+  assert.equal(despues.body.data[0].stockStatus, 'disponible')
+  assert.equal(despues.body.data[0].disponible, true)
+})
+
+test('el listado con stock exacto no se guarda en ninguna caché', async () => {
+  await crearProducto()
+  const { token } = await crearAdmin(app)
+
+  const res = await request(app)
+    .get('/api/productos')
+    .set('Authorization', `Bearer ${token}`)
+
+  assert.equal(res.status, 200)
+  assert.equal(typeof res.body.data[0].stock, 'number')
+  assert.equal(res.headers['cache-control'], 'no-store')
+  assert.equal(res.headers.vary, 'Authorization')
+})
+
 test('una ruta inexistente devuelve 404 en JSON', async () => {
   const res = await request(app).get('/api/no-existe')
 
