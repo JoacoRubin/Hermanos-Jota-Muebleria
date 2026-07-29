@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
 import AsistenteService from '../services/chatService'
 import { formatearPrecio } from '../constants'
 import './AsistenteWidget.css'
 
+const NOMBRE = 'KIMBAI'
+
 const SALUDO = {
   de: 'bot',
   texto:
-    '¡Hola! Soy el asistente de Hermanos Jota. Te puedo ayudar con envíos, ' +
-    'garantía, pagos y cuidado de los muebles. ¿Qué querés saber?',
+    `¡Hola! Soy ${NOMBRE}, el asistente de Hermanos Jota. Te puedo ayudar con ` +
+    'envíos, garantía, pagos y cuidado de los muebles. ¿Qué querés saber?',
 }
 
 // Solo para el primer mensaje, antes de que el usuario pregunte algo (todavía
@@ -38,12 +40,39 @@ function AsistenteWidget() {
   const [cargando, setCargando] = useState(false)
   const finRef = useRef(null)
   const inputRef = useRef(null)
+  const mensajesRef = useRef(null)
+
+  // Última posición de scroll del transcript, para sobrevivir al cierre.
+  // `null` significa "todavía nadie scrolleó": en la primera apertura vamos al
+  // fondo, que es donde está lo último que se dijo.
+  const scrollPrevio = useRef(null)
 
   // Autoscroll al último mensaje. El `?.` en el método cubre entornos donde
   // scrollIntoView no existe (jsdom en los tests, navegadores muy viejos).
+  //
+  // ⚠️ `abierto` NO va en las dependencias, a propósito. Si estuviera, reabrir
+  // el panel dispararía este scroll animado sobre un transcript recién montado
+  // (o sea: arrancar en el saludo y desfilar hasta el final). Reabrir se maneja
+  // en el efecto de abajo, de una y sin animación. Con el panel cerrado
+  // `finRef.current` es null y el `?.` corta solo.
   useEffect(() => {
     finRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [mensajes, cargando])
+
+  // Cerrar desmonta el panel, así que el transcript pierde su scrollTop y
+  // vuelve a nacer en 0 —arriba, en el saludo—. Acá se lo devolvemos.
+  //
+  // Va en `useLayoutEffect` y no en `useEffect` porque corre antes del paint: el
+  // usuario nunca ve el salto desde el principio de la conversación.
+  useLayoutEffect(() => {
+    if (!abierto) return
+
+    const transcript = mensajesRef.current
+    if (!transcript) return
+
+    transcript.scrollTop =
+      scrollPrevio.current ?? transcript.scrollHeight - transcript.clientHeight
+  }, [abierto])
 
   // Al abrir el panel, el foco va al campo de texto. Sin esto el usuario de
   // teclado tiene que tabular por toda la página para llegar a escribir.
@@ -104,26 +133,30 @@ function AsistenteWidget() {
       <button
         type="button"
         className="asistente-fab"
-        aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente'}
+        title={NOMBRE}
+        aria-label={abierto ? `Cerrar ${NOMBRE}` : `Abrir ${NOMBRE}`}
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
       >
-        {abierto ? '✕' : '💬'}
+        {/* El anillo que gira es un ::before del botón; el glifo va en su propio
+            span para quedarse quieto. Rotar el botón entero deja el ícono
+            cabeza abajo la mitad del tiempo. */}
+        <span className="asistente-fab-icono">{abierto ? '✕' : '💬'}</span>
       </button>
 
       {abierto && (
         <div
           className="asistente-panel"
           role="dialog"
-          aria-label="Asistente de Hermanos Jota"
+          aria-label={`${NOMBRE}, asistente de Hermanos Jota`}
         >
           <div className="asistente-header">
-            <span>Asistente Hermanos Jota</span>
+            <span>{NOMBRE}</span>
             <button
               type="button"
               className="asistente-cerrar"
               onClick={() => setAbierto(false)}
-              aria-label="Cerrar asistente"
+              aria-label={`Cerrar ${NOMBRE}`}
             >
               ✕
             </button>
@@ -143,6 +176,13 @@ function AsistenteWidget() {
             role="log"
             aria-live="polite"
             aria-atomic="false"
+            ref={mensajesRef}
+            // Se anota en cada scroll en vez de leerlo en el cleanup del cierre:
+            // cuando React desmonta, depender de que el nodo siga conectado para
+            // poder leer su scrollTop es apostar al orden interno del commit.
+            onScroll={(e) => {
+              scrollPrevio.current = e.currentTarget.scrollTop
+            }}
           >
             {mensajes.map((m, i) => {
               const esUltimoMensaje = i === mensajes.length - 1

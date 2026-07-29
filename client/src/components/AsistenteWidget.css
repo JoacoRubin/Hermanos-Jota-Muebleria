@@ -15,10 +15,43 @@
   box-shadow: 0 6px 20px rgba(160, 82, 45, 0.35);
   z-index: 1000;
   transition: transform 0.2s ease;
+  display: grid;
+  place-items: center;
 }
 
 .asistente-fab:hover {
   transform: scale(1.08);
+}
+
+/* El anillo de KIMBAI: gira sin parar para que se lea como algo vivo.
+   Va por dentro del círculo (`inset` positivo) porque un punteado blanco por
+   fuera se perdería contra el alabastro del fondo. */
+.asistente-fab::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.65);
+  animation: asistente-girar 8s linear infinite;
+}
+
+/* El glifo se queda quieto: gira el anillo, no el contenido. */
+.asistente-fab-icono {
+  line-height: 1;
+}
+
+@keyframes asistente-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Una animación infinita es exactamente lo que esta gente pidió no ver: marea,
+   distrae y en algunos casos dispara síntomas vestibulares. */
+@media (prefers-reduced-motion: reduce) {
+  .asistente-fab::before {
+    animation: none;
+  }
 }
 
 .asistente-panel {

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route, Link } from 'react-router-dom'
 import AsistenteWidget from './AsistenteWidget'
@@ -57,7 +57,7 @@ describe('el asistente sobrevive a la navegación', () => {
     const user = userEvent.setup()
     render(<AppDePrueba />)
 
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Ir a inicio' }))
@@ -78,7 +78,7 @@ describe('el asistente sobrevive a la navegación', () => {
     const user = userEvent.setup()
     render(<AppDePrueba />)
 
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
     await screen.findByText('Hacemos envíos a todo el país.')
@@ -105,7 +105,7 @@ describe('el asistente sobrevive a la navegación', () => {
     const user = userEvent.setup()
     render(<AppDePrueba />)
 
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.click(
       screen.getByRole('button', { name: '¿Qué garantía tienen los muebles?' })
     )
@@ -124,13 +124,110 @@ describe('el asistente sobrevive a la navegación', () => {
     render(<AppDePrueba />)
 
     expect(
-      screen.getByRole('button', { name: 'Abrir asistente' })
+      screen.getByRole('button', { name: 'Abrir KIMBAI' })
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'Ir a inicio' }))
 
     expect(
-      screen.getByRole('button', { name: 'Abrir asistente' })
+      screen.getByRole('button', { name: 'Abrir KIMBAI' })
     ).toBeInTheDocument()
+  })
+})
+
+/**
+ * Cerrar el panel DESMONTA el transcript (`{abierto && ...}`), y con él se va su
+ * `scrollTop`: al reabrir nace un div nuevo arrancando en 0, o sea en el saludo.
+ * El autoscroll no lo salva porque depende de `[mensajes, cargando]` y al
+ * reabrir esas deps no cambiaron. Resultado: volvés al principio de la charla y
+ * tenés que scrollear a mano hasta lo último que hablaste.
+ */
+describe('reabrir devuelve la charla donde quedó, no al principio', () => {
+  const ALTO_TOTAL = 1000
+  const ALTO_VISIBLE = 400
+
+  // jsdom no hace layout: `scrollHeight` es 0 y las asignaciones a `scrollTop`
+  // se descartan porque el elemento "no tiene caja de scroll". Sin estos stubs
+  // el test no puede distinguir "restauró la posición" de "no hizo nada".
+  beforeEach(() => {
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => ALTO_TOTAL,
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => ALTO_VISIBLE,
+    })
+    // Data property writable: asignar `el.scrollTop` crea una propiedad propia
+    // en la instancia, así que cada elemento recuerda su valor... y uno recién
+    // montado vuelve a leer el 0 del prototipo. Igual que el navegador.
+    Object.defineProperty(HTMLElement.prototype, 'scrollTop', {
+      configurable: true,
+      writable: true,
+      value: 0,
+    })
+  })
+
+  afterEach(() => {
+    delete HTMLElement.prototype.scrollHeight
+    delete HTMLElement.prototype.clientHeight
+    delete HTMLElement.prototype.scrollTop
+  })
+
+  it('restaura la posición de scroll que tenía al cerrarse', async () => {
+    AsistenteService.preguntar.mockResolvedValue({
+      respuesta: 'Cinco años de garantía.',
+      fuentes: [],
+    })
+
+    const user = userEvent.setup()
+    render(<AppDePrueba />)
+
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+    await user.type(screen.getByLabelText('Tu pregunta'), '¿garantía?')
+    await user.click(screen.getByRole('button', { name: 'Enviar' }))
+    await screen.findByText('Cinco años de garantía.')
+
+    // El usuario sube a releer algo del medio de la conversación.
+    fireEvent.scroll(screen.getByRole('log'), { target: { scrollTop: 620 } })
+
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+
+    expect(
+      screen.getByRole('log').scrollTop,
+      'al reabrir tiene que seguir donde estaba, no en el saludo'
+    ).toBe(620)
+  })
+
+  it('la primera apertura arranca en el último mensaje', async () => {
+    const user = userEvent.setup()
+    render(<AppDePrueba />)
+
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+
+    // Sin posición previa que restaurar, el fondo es lo correcto: nadie abre un
+    // chat para leer el mensaje más viejo.
+    expect(screen.getByRole('log').scrollTop).toBe(ALTO_TOTAL - ALTO_VISIBLE)
+  })
+
+  it('no dispara el scroll animado al reabrir', async () => {
+    // Un `scrollIntoView({ behavior: 'smooth' })` sobre un transcript recién
+    // montado ES el "se va al principio y scrollea" del reporte. Al reabrir la
+    // posición se restaura de una, sin animación.
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    const user = userEvent.setup()
+    render(<AppDePrueba />)
+
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+    await user.keyboard('{Escape}')
+    scrollIntoView.mockClear()
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+
+    delete HTMLElement.prototype.scrollIntoView
   })
 })

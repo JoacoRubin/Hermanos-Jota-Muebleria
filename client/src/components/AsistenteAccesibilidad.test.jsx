@@ -16,7 +16,7 @@ beforeEach(() => {
 })
 
 const abrir = async (user) =>
-  user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+  user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
 
 describe('accesibilidad del asistente', () => {
   it('el transcript es una región viva, o el lector no anuncia las respuestas', async () => {

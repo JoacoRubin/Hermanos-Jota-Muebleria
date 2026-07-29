@@ -26,7 +26,7 @@ describe('AsistenteWidget', () => {
     const user = userEvent.setup()
     render(<AsistenteWidget />)
 
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
 
     expect(screen.getByText(/asistente de Hermanos Jota/i)).toBeInTheDocument()
   })
@@ -39,7 +39,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
 
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
@@ -65,7 +65,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
@@ -82,7 +82,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
 
     await user.type(screen.getByLabelText('Tu pregunta'), 'hola?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
@@ -97,7 +97,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
 
     await user.click(
       screen.getByRole('button', { name: '¿Qué garantía tienen los muebles?' })
@@ -118,7 +118,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
@@ -140,7 +140,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
     await screen.findByText('Hacemos envíos a todo el país.')
@@ -162,7 +162,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), 'primera')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
     await screen.findByText('Primera respuesta.')
@@ -186,7 +186,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿el más caro?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
@@ -220,7 +220,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), 'recomendame algo')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
@@ -260,7 +260,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), 'algo grande')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
@@ -276,7 +276,7 @@ describe('AsistenteWidget', () => {
 
     const user = userEvent.setup()
     render(<AsistenteWidget />)
-    await user.click(screen.getByRole('button', { name: 'Abrir asistente' }))
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
     await user.type(screen.getByLabelText('Tu pregunta'), '¿Hacen envíos?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
