@@ -1,16 +1,23 @@
 /* Asistente (chatbot RAG). Usa la paleta "Madera Natural" de index.css. */
 
+/* 72px: el nombre son seis letras y el anillo se come el borde. En 56px
+   "KIMBAI" quedaba en 7px de tipografía, o sea ilegible.
+
+   Fondo claro y no siena, a propósito. Con el siena de fondo los únicos colores
+   de la paleta que superaban 4.5:1 eran el blanco y el alabastro —la vara de oro
+   daba 2.45:1 y el verde salvia 2.12:1—, así que para escribir el nombre CON los
+   colores de la marca hay que invertir el botón. Ahora el siena es la tinta, no
+   el papel. */
 .asistente-fab {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 56px;
-  height: 56px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   border: none;
-  background: var(--siena-tostado);
-  color: white;
-  font-size: 1.5rem;
+  background: var(--fondo-tarjeta);
+  color: var(--texto-principal);
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(160, 82, 45, 0.35);
   z-index: 1000;
@@ -24,20 +31,45 @@
 }
 
 /* El anillo de KIMBAI: gira sin parar para que se lea como algo vivo.
-   Va por dentro del círculo (`inset` positivo) porque un punteado blanco por
-   fuera se perdería contra el alabastro del fondo. */
+   Va por dentro del círculo y en siena —ahora que el fondo es claro, el punteado
+   toma el color de marca y encima delimita el botón contra el alabastro de la
+   página, que si no se confundirían.
+   `inset: 3px` y no 4px: cada píxel que le saco al margen es un píxel de ancho
+   que gana el nombre. */
 .asistente-fab::before {
   content: '';
   position: absolute;
-  inset: 4px;
+  inset: 3px;
   border-radius: 50%;
-  border: 2px dashed rgba(255, 255, 255, 0.65);
+  border: 2px dashed var(--siena-tostado);
+  opacity: 0.55;
   animation: asistente-girar 8s linear infinite;
 }
 
-/* El glifo se queda quieto: gira el anillo, no el contenido. */
-.asistente-fab-icono {
+/* El nombre se queda quieto: gira el anillo, no el contenido. */
+.asistente-fab-texto {
+  font-size: 0.82rem;
+  font-weight: 600;
+  /* Negativo a propósito: compacta las seis letras lo justo para que el salto
+     de 0.62rem a 0.82rem entre en el círculo sin rozar el anillo. */
+  letter-spacing: -0.02em;
   line-height: 1;
+  /* Seis letras en ~62px de diámetro útil no perdonan un salto de línea. */
+  white-space: nowrap;
+}
+
+/* El "AI" de KIMBAI, en el siena de la marca: 5.61:1 sobre el fondo blanco del
+   botón, bien por encima del 4.5:1 que pide AA. */
+.asistente-fab-ai {
+  font-weight: 800;
+  color: var(--siena-tostado);
+}
+
+.asistente-fab-texto.es-cerrar {
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--siena-tostado);
 }
 
 @keyframes asistente-girar {

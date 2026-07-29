@@ -22,6 +22,28 @@ beforeEach(() => {
 })
 
 describe('AsistenteWidget', () => {
+  it('el botón flotante dice KIMBAI en vez de un ícono de chat', () => {
+    render(<AsistenteWidget />)
+
+    const fab = screen.getByRole('button', { name: 'Abrir KIMBAI' })
+
+    // Un 💬 genérico no dice de quién es el asistente. El nombre sí.
+    expect(fab).toHaveTextContent('KIMBAI')
+    expect(fab).not.toHaveTextContent('💬')
+  })
+
+  it('con el panel abierto el botón pasa a cerrar y no repite el nombre', async () => {
+    const user = userEvent.setup()
+    render(<AsistenteWidget />)
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+
+    // El header ya dice KIMBAI: el FAB repitiéndolo sería el nombre dos veces
+    // en pantalla, y encima sin explicar que ese botón ahora cierra.
+    expect(
+      screen.getByRole('button', { name: 'Cerrar KIMBAI' })
+    ).not.toHaveTextContent('KIMBAI')
+  })
+
   it('abre el panel y muestra el saludo', async () => {
     const user = userEvent.setup()
     render(<AsistenteWidget />)

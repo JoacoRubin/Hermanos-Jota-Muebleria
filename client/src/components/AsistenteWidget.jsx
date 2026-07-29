@@ -133,15 +133,31 @@ function AsistenteWidget() {
       <button
         type="button"
         className="asistente-fab"
-        title={NOMBRE}
         aria-label={abierto ? `Cerrar ${NOMBRE}` : `Abrir ${NOMBRE}`}
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
       >
-        {/* El anillo que gira es un ::before del botón; el glifo va en su propio
-            span para quedarse quieto. Rotar el botón entero deja el ícono
-            cabeza abajo la mitad del tiempo. */}
-        <span className="asistente-fab-icono">{abierto ? '✕' : '💬'}</span>
+        {/* El anillo que gira es un ::before del botón; el contenido va en su
+            propio span para quedarse quieto. Rotar el botón entero dejaría el
+            nombre cabeza abajo la mitad del tiempo.
+
+            Cerrado muestra el nombre —un 💬 genérico no dice de quién es el
+            asistente—. Abierto pasa a la cruz: el header ya dice KIMBAI, y
+            repetirlo dejaría sin señal de que este botón ahora cierra. */}
+        <span className={`asistente-fab-texto${abierto ? ' es-cerrar' : ''}`}>
+          {abierto ? (
+            '✕'
+          ) : (
+            <>
+              {/* KIMB + AI: el "AI" va destacado porque es lo que el nombre
+                  esconde. Spans y no <strong>: es un realce de marca, no
+                  énfasis semántico, y el nombre accesible del botón ya lo da
+                  el aria-label —así el lector de pantalla dice "Abrir KIMBAI"
+                  de una en vez de deletrearlo en pedazos. */}
+              KIMB<span className="asistente-fab-ai">AI</span>
+            </>
+          )}
+        </span>
       </button>
 
       {abierto && (
@@ -152,11 +168,15 @@ function AsistenteWidget() {
         >
           <div className="asistente-header">
             <span>{NOMBRE}</span>
+            {/* "Cerrar" pelado, sin el nombre: con el panel abierto el FAB
+                también cierra, y dos botones con el mismo nombre accesible es
+                una ambigüedad para quien navega por lector de pantalla. Acá el
+                contexto lo da el `aria-label` del diálogo que lo contiene. */}
             <button
               type="button"
               className="asistente-cerrar"
               onClick={() => setAbierto(false)}
-              aria-label={`Cerrar ${NOMBRE}`}
+              aria-label="Cerrar"
             >
               ✕
             </button>
