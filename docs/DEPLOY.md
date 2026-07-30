@@ -217,23 +217,41 @@ llevaba puesto el catálogo real.
 
 ---
 
-## 6. Cold start de Render
+## 6. Cold start de Render (y del RAG)
 
-El plan gratuito duerme el servicio a los 15 minutos de inactividad y el primer
-request después puede tardar hasta un minuto.
+El plan gratuito de Render duerme el servicio a los 15 minutos de inactividad, y
+el RAG en Cloud Run escala a cero en la misma ventana. **Los dos cold starts se
+suman**: medido en producción, una pregunta al asistente con ambos servicios
+fríos tardó 34,5s — 13,4s del RAG y ~21s de Render.
 
 Lo que hay hecho:
 
-- `.github/workflows/keepalive.yml` pinguea `/health` cada 14 minutos dentro de
-  la franja horaria de uso. Requiere el secret `RENDER_URL`. Si el secret falta,
-  el workflow **falla** en vez de fingir que funcionó.
+- **Cloud Scheduler** (GCP, `southamerica-east1`) pinguea el `/health` de los dos
+  servicios cada 10 minutos. Entra en el free tier: 3 jobs por mes sin cargo.
+
+  ```bash
+  gcloud scheduler jobs list --location=southamerica-east1
+  # rag-keepalive     */10 * * * *  ENABLED  → https://rag-api-...run.app/health
+  # render-keepalive  */10 * * * *  ENABLED  → https://<backend>.onrender.com/health
+  ```
+
+  ⚠️ **Esta infraestructura NO está versionada en el repo**: vive solo en GCP. Si
+  se recrea el proyecto de GCP hay que volver a crear los jobs a mano.
+
 - `apiClient.js` reintenta los `GET` con timeouts largos y avisa en pantalla que
   el servidor puede estar arrancando.
 - Los `POST` **no** se reintentan nunca: un reintento sobre un pedido que ya
   llegó al servidor lo duplica.
 
-La solución de fondo es un plan pago o un hosting que no duerma. El keepalive es
-un parche, y conviene tenerlo claro.
+**Por qué no está en GitHub Actions.** Estuvo, en `.github/workflows/keepalive.yml`,
+y se sacó con evidencia: los cron de GitHub son *best-effort* y en este repo
+llegaban cada **58-71 minutos** con un cron de `*/10`. Con servicios que duermen a
+los 15, eso no reduce nada — solo da sensación de cobertura. Cloud Scheduler, en
+cambio, disparó a las `05:00:02Z` con un `*/10`: dos segundos de desvío.
+
+La solución de fondo sigue siendo un plan pago o un hosting que no duerma (en
+Cloud Run, `--min-instances=1`, que cobra la instancia idle). El keepalive es un
+parche, y conviene tenerlo claro.
 
 ---
 
@@ -247,7 +265,10 @@ un parche, y conviene tenerlo claro.
       (ojo: es una variable del BACKEND aunque apunte al frontend — es Express
       quien arma el link del mail de recuperación)
 - [ ] `VITE_API_URL` apuntando al backend correcto en Netlify
-- [ ] Secret `RENDER_URL` cargado en GitHub Actions
+- [ ] Jobs de Cloud Scheduler creados y `ENABLED` (`gcloud scheduler jobs list
+      --location=southamerica-east1`) — no están versionados, se recrean a mano
+- [ ] Secrets `RENDER_URL` y `RAG_URL` **borrados** de GitHub Actions: quedaron
+      huérfanos al eliminar `keepalive.yml`
 - [ ] Migraciones corridas (las dos son idempotentes y simulan por defecto):
       `npm run migrate:001 -- --apply` (renombre de estados) y
       `npm run migrate:002 -- --apply` (saldo inicial del libro de stock)
