@@ -16,7 +16,14 @@
   height: 72px;
   border-radius: 50%;
   border: none;
-  background: var(--fondo-tarjeta);
+  /* Alabastro aclarado, no blanco puro: el #fff no pertenece a esta paleta y
+     cantaba como un parche pegado encima de la página.
+     Tampoco alabastro puro —sería el MISMO color que el fondo y el botón
+     desaparecería—: 60/40 contra el blanco deja algo cálido que todavía se
+     despega. `color-mix` en vez de un hex mágico para que el tono siga
+     derivando de la variable de marca; el hex de arriba es solo el fallback. */
+  background: #f9f0e5;
+  background: color-mix(in srgb, var(--alabastro-calido) 60%, white);
   color: var(--texto-principal);
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(160, 82, 45, 0.35);
@@ -42,7 +49,9 @@
   inset: 3px;
   border-radius: 50%;
   border: 2px dashed var(--siena-tostado);
-  opacity: 0.55;
+  /* Más marcado que antes: con el fondo del botón acercándose al de la página,
+     el anillo pasó de adorno a ser lo que dibuja el borde del botón. */
+  opacity: 0.75;
   animation: asistente-girar 8s linear infinite;
 }
 
