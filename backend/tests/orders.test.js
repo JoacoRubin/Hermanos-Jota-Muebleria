@@ -152,6 +152,49 @@ test('si un ítem falla, se devuelve el stock ya reservado de los otros', async 
   )
 })
 
+test('si falla el asiento contable, no queda pedido huérfano ni stock descontado', async () => {
+  // El caso M1 de la auditoría: `Order.create` tiene éxito pero `registrarVenta`
+  // (el libro mayor) se cae. Sin la compensación completa quedaba un pedido
+  // creado, con el stock ya devuelto por `liberarReserva` —o sea revendible— y
+  // sin asiento contable. Eso habilitaba sobreventa.
+  const { token } = await registrarUsuario(app)
+  const producto = await crearProducto({ stock: 5 })
+
+  const StockMovement = require('../src/models/StockMovement')
+  const insertManyOriginal = StockMovement.insertMany
+  StockMovement.insertMany = async () => {
+    throw new Error('caída simulada del libro mayor')
+  }
+
+  try {
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        items: [{ producto: producto._id.toString(), cantidad: 2 }],
+        direccionEnvio: direccionValida,
+      })
+
+    assert.equal(res.status, 500)
+
+    const Order = require('../src/models/Order')
+    const Product = require('../src/models/Product')
+
+    assert.equal(
+      await Order.countDocuments(),
+      0,
+      'el pedido huérfano tiene que revertirse cuando falla el asiento'
+    )
+    assert.equal(
+      (await Product.findById(producto._id)).stock,
+      5,
+      'el stock reservado tiene que volver al inventario'
+    )
+  } finally {
+    StockMovement.insertMany = insertManyOriginal
+  }
+})
+
 test('el mismo producto repetido se agrupa y respeta el stock total', async () => {
   const { token } = await registrarUsuario(app)
   const producto = await crearProducto({ stock: 3 })

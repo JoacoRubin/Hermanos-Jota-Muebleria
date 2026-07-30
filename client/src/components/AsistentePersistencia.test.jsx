@@ -119,6 +119,35 @@ describe('el asistente sobrevive a la navegación', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('sobrevive a un F5: rehidrata la conversación desde sessionStorage', async () => {
+    // Un F5 recarga el módulo y perdía el estado en memoria. Ahora el widget
+    // persiste la charla en sessionStorage; desmontar + montar de nuevo simula
+    // el refresh y la conversación tiene que volver.
+    AsistenteService.preguntar.mockResolvedValue({
+      respuesta: 'Cinco años de garantía.',
+      fuentes: [],
+    })
+
+    const user = userEvent.setup()
+    const { unmount } = render(<AppDePrueba />)
+
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+    await user.type(screen.getByLabelText('Tu pregunta'), '¿garantía?')
+    await user.click(screen.getByRole('button', { name: 'Enviar' }))
+    await screen.findByText('Cinco años de garantía.')
+
+    unmount()
+    render(<AppDePrueba />)
+
+    await user.click(screen.getByRole('button', { name: 'Abrir KIMBAI' }))
+
+    expect(screen.getByText('¿garantía?')).toBeInTheDocument()
+    expect(
+      screen.getByText('Cinco años de garantía.'),
+      'la conversación tiene que rehidratarse tras el refresh'
+    ).toBeInTheDocument()
+  })
+
   it('el asistente está disponible en todas las páginas', async () => {
     const user = userEvent.setup()
     render(<AppDePrueba />)

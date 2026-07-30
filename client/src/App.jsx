@@ -109,8 +109,10 @@ function App() {
               menú. Acá afuera queda fuera del árbol de rutas, así que cambiar
               de página no lo desmonta y el historial del chat sobrevive.
 
-              (Un F5 sí lo reinicia: el estado vive en memoria. Eso es otra
-              conversación —haría falta sessionStorage— y hoy no hace falta.)
+              El estado vive en memoria, así que la navegación entre páginas no
+              lo toca. Un F5 sí recargaría el módulo, pero el widget persiste la
+              conversación en sessionStorage y la rehidrata al montar, así que
+              tampoco se pierde con un refresh.
             */}
             <AsistenteWidget />
           </div>

@@ -42,6 +42,11 @@ function ModernLayout({ children, title }) {
 
   return (
     <div className="modern-layout">
+      {/* Primer elemento tabulable de la página: salta la navegación entera. */}
+      <a href="#contenido-principal" className="skip-link">
+        Saltar al contenido
+      </a>
+
       <header className="modern-header">
         <div className="header-brand-section">
           <img
@@ -52,30 +57,34 @@ function ModernLayout({ children, title }) {
           <p className="modern-title">Mueblería Hermanos JOTA</p>
         </div>
 
+        {/* Los emojis van en spans con `aria-hidden`: son decorativos y sin
+            esto el lector de pantalla los deletrea ("bolsa de compras Carrito").
+            El texto de al lado ya nombra el destino. */}
         <nav className="modern-nav" aria-label="Navegación principal">
           <Link to="/" className={`nav-link ${isActive('/')}`}>
-            🏠 Inicio
+            <span aria-hidden="true">🏠</span> Inicio
           </Link>
           <Link to="/productos" className={`nav-link ${isActive('/productos')}`}>
-            📦 Productos
+            <span aria-hidden="true">📦</span> Productos
           </Link>
           <Link to="/contacto" className={`nav-link ${isActive('/contacto')}`}>
-            📞 Contacto
+            <span aria-hidden="true">📞</span> Contacto
           </Link>
 
           {isAuthenticated ? (
             <>
               <Link to="/carrito" className={`nav-link ${isActive('/carrito')}`}>
-                🛒 Carrito ({totalItems})
+                <span aria-hidden="true">🛒</span> Carrito ({totalItems})
               </Link>
               <Link
                 to="/mis-pedidos"
                 className={`nav-link ${isActive('/mis-pedidos')}`}
               >
-                📦 Mis pedidos
+                <span aria-hidden="true">📦</span> Mis pedidos
               </Link>
               <Link to="/perfil" className={`nav-link ${isActive('/perfil')}`}>
-                👤 {user?.nombre?.split(' ')[0] || 'Mi perfil'}
+                <span aria-hidden="true">👤</span>{' '}
+                {user?.nombre?.split(' ')[0] || 'Mi perfil'}
               </Link>
               {isAdmin && (
                 <>
@@ -83,19 +92,19 @@ function ModernLayout({ children, title }) {
                     to="/admin/pedidos"
                     className={`nav-link ${isActive('/admin/pedidos')}`}
                   >
-                    📋 Pedidos
+                    <span aria-hidden="true">📋</span> Pedidos
                   </Link>
                   <Link
                     to="/admin/stock"
                     className={`nav-link ${isActive('/admin/stock')}`}
                   >
-                    📊 Stock
+                    <span aria-hidden="true">📊</span> Stock
                   </Link>
                   <Link
                     to="/admin/crear-producto"
                     className={`nav-link ${isActive('/admin/crear-producto')}`}
                   >
-                    ➕ Crear producto
+                    <span aria-hidden="true">➕</span> Crear producto
                   </Link>
                 </>
               )}
@@ -104,23 +113,26 @@ function ModernLayout({ children, title }) {
                 onClick={handleLogout}
                 className="nav-link nav-button logout-button"
               >
-                🚪 Cerrar sesión
+                <span aria-hidden="true">🚪</span> Cerrar sesión
               </button>
             </>
           ) : (
             <>
               <Link to="/login" className={`nav-link ${isActive('/login')}`}>
-                🔐 Iniciar sesión
+                <span aria-hidden="true">🔐</span> Iniciar sesión
               </Link>
               <Link to="/registro" className={`nav-link ${isActive('/registro')}`}>
-                📝 Registrarse
+                <span aria-hidden="true">📝</span> Registrarse
               </Link>
             </>
           )}
         </nav>
       </header>
 
-      <main>{title && <h1 className="sr-only">{title}</h1>}{children}</main>
+      <main id="contenido-principal">
+        {title && <h1 className="sr-only">{title}</h1>}
+        {children}
+      </main>
 
       <footer className="modern-footer">
         <p>

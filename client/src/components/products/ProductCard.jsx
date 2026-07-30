@@ -62,7 +62,7 @@ function ProductCard({ producto, onAgregar }) {
           onClick={() => onAgregar(producto)}
           disabled={sinStock}
         >
-          🛒 Agregar
+          <span aria-hidden="true">🛒</span> Agregar
         </button>
         <Link to={`/productos/${producto.id}`} className="btn btn-secondary">
           Ver detalles

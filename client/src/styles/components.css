@@ -24,6 +24,26 @@
   outline-offset: 2px;
 }
 
+/* Skip link: oculto hasta que recibe foco. Un usuario de teclado lo encuentra
+   con el primer Tab y saltea toda la navegación en vez de tabular link por
+   link en cada página. */
+.skip-link {
+  position: absolute;
+  left: 0;
+  top: -100px;
+  z-index: 2000;
+  background: var(--siena-tostado);
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 0 0 8px 0;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 .app-loading {
   display: flex;
   align-items: center;

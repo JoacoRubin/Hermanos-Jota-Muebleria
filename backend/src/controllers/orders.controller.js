@@ -1,5 +1,6 @@
 const Order = require('../models/Order')
 const Product = require('../models/Product')
+const StockMovement = require('../models/StockMovement')
 const ApiError = require('../utils/ApiError')
 const asyncHandler = require('../utils/asyncHandler')
 const { serializeOrder } = require('../serializers')
@@ -95,6 +96,9 @@ exports.createOrder = asyncHandler(async (req, res) => {
     throw await errorDeReserva(fallo)
   }
 
+  // Se declara afuera del try para que el catch pueda revertir el pedido si
+  // alcanzó a crearse. Ver la nota de la compensación más abajo.
+  let order
   try {
     // ────────────────────────────────────────────────────────────────
     // ACÁ ESTÁ EL PUNTO. `precio`, `nombre` e `imagenUrl` salen del
@@ -113,7 +117,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       itemsPedido.reduce((sum, item) => sum + item.precio * item.cantidad, 0)
     )
 
-    const order = await Order.create({
+    order = await Order.create({
       usuario: req.user.id,
       items: itemsPedido,
       total,
@@ -136,7 +140,36 @@ exports.createOrder = asyncHandler(async (req, res) => {
       data: serializeOrder(order),
     })
   } catch (error) {
+    // Compensación COMPLETA, no solo del stock.
+    //
+    // Devolver las unidades no alcanza: si `Order.create` ya había pasado y lo
+    // que falló fue el asiento contable, el pedido queda creado con su stock ya
+    // devuelto —o sea revendible— y sin registro en el libro mayor. Ese pedido
+    // huérfano después se podría despachar sobre unidades que ya se vendieron.
+    //
+    // Se revierte lo que se haya alcanzado a escribir: el pedido y cualquier
+    // movimiento parcial que `registrarVenta` haya insertado antes de caer. Los
+    // `.catch` evitan que un fallo de la limpieza tape el error original, que es
+    // el que el usuario necesita ver.
     await liberarReserva(reservados)
+
+    if (order?._id) {
+      await Promise.all([
+        Order.deleteOne({ _id: order._id }).catch((e) =>
+          console.error(
+            `[orders] No se pudo revertir el pedido huérfano ${order._id}:`,
+            e.message
+          )
+        ),
+        StockMovement.deleteMany({ pedido: order._id }).catch((e) =>
+          console.error(
+            `[orders] No se pudieron limpiar los movimientos del pedido ${order._id}:`,
+            e.message
+          )
+        ),
+      ])
+    }
+
     throw error
   }
 })

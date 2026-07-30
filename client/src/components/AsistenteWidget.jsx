@@ -6,11 +6,33 @@ import './AsistenteWidget.css'
 
 const NOMBRE = 'KIMBAI'
 
+// Clave del historial en sessionStorage. `session` y no `local` a propósito: la
+// conversación tiene sentido mientras dura la visita; que sobreviva días en el
+// navegador sería guardar de más.
+const STORAGE_KEY = 'kimbai_chat'
+
 const SALUDO = {
   de: 'bot',
   texto:
     `¡Hola! Soy ${NOMBRE}, el asistente de Hermanos Jota. Te puedo ayudar con ` +
     'envíos, garantía, pagos y cuidado de los muebles. ¿Qué querés saber?',
+}
+
+/**
+ * Recupera la conversación de sessionStorage para que un F5 no la borre.
+ *
+ * El estado del widget vive en memoria (por eso sobrevive a la navegación entre
+ * páginas, ver App.jsx), pero un refresh recarga el módulo y lo perdía. Esto lo
+ * persiste. Si no hay nada guardado, o está corrupto, se arranca con el saludo.
+ */
+function leerHistorial() {
+  try {
+    const guardado = sessionStorage.getItem(STORAGE_KEY)
+    const parsed = guardado ? JSON.parse(guardado) : null
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [SALUDO]
+  } catch {
+    return [SALUDO]
+  }
 }
 
 // Solo para el primer mensaje, antes de que el usuario pregunte algo (todavía
@@ -35,9 +57,21 @@ const SUGERENCIAS_INICIALES = [
  */
 function AsistenteWidget() {
   const [abierto, setAbierto] = useState(false)
-  const [mensajes, setMensajes] = useState([SALUDO])
+  const [mensajes, setMensajes] = useState(leerHistorial)
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
+
+  // Persistir la charla en cada cambio. Solo si hay algo más que el saludo: no
+  // vale la pena ensuciar el storage con el estado inicial. Un storage lleno o
+  // deshabilitado no puede tumbar el chat, que sigue funcionando en memoria.
+  useEffect(() => {
+    if (mensajes.length <= 1) return
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(mensajes))
+    } catch {
+      // Sin storage disponible: el historial vive en memoria y basta.
+    }
+  }, [mensajes])
   const finRef = useRef(null)
   const inputRef = useRef(null)
   const mensajesRef = useRef(null)
