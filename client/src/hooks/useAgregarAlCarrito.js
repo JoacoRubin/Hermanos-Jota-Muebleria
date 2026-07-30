@@ -25,16 +25,35 @@ import { useUI } from '../contexts/UIContext'
  * Vive en un hook y no en cada página porque la regla es una sola. Estaba
  * duplicada en `Products` y en `ProductDetail`, que es como se llega a que un
  * día solo una de las dos se actualice.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * EL ADMIN NO COMPRA
+ * ────────────────────────────────────────────────────────────────────────────
+ * Es el mismo actor que despacha, cancela y repone stock. Si además pudiera
+ * pedir, estaría a los dos lados del mostrador: sus compras descontarían stock
+ * real y aparecerían en su propio panel para que se las apruebe a sí mismo.
+ *
+ * Esto es UX, NO seguridad — un `curl` con el token del admin ni pasa por acá.
+ * La regla de verdad vive en `bloquearAdmins`, sobre `POST /api/orders`.
  */
 export function useAgregarAlCarrito() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isAdmin } = useAuth()
   const { addToCart } = useCart()
   const { toast } = useUI()
 
   return useCallback(
     (producto) => {
+      // Va ANTES del chequeo de sesión: al admin no le falta cuenta, le sobra
+      // rol. Mandarlo a `/registro` sería el guion equivocado.
+      if (isAdmin) {
+        toast.error(
+          'Las cuentas de administración no compran. Ingresá con una cuenta de cliente.'
+        )
+        return
+      }
+
       if (!isAuthenticated) {
         navigate('/registro', {
           state: {
@@ -51,7 +70,7 @@ export function useAgregarAlCarrito() {
       addToCart(producto)
       toast.success(`${producto.nombre} agregado al carrito`)
     },
-    [isAuthenticated, addToCart, toast, navigate, location]
+    [isAdmin, isAuthenticated, addToCart, toast, navigate, location]
   )
 }
 

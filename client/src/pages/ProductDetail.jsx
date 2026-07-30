@@ -163,18 +163,31 @@ function ProductDetail() {
             )}
 
             <div className="producto-detalle__acciones">
-              <button
-                type="button"
-                onClick={handleAgregar}
-                className="explore-button"
-                disabled={sinStock}
-              >
-                🛒 Agregar al carrito
-              </button>
+              {/* Las acciones de compra son del cliente. Al admin no se le
+                  deshabilita el botón —un botón gris no explica nada—: se le
+                  dice en una línea por qué esta pantalla no le ofrece comprar,
+                  y se le deja el catálogo tal cual para revisarlo. */}
+              {isAdmin ? (
+                <p className="producto-detalle__aviso-admin" role="status">
+                  <span aria-hidden="true">🔒</span> Estás con una cuenta de
+                  administración: la compra es de las cuentas de cliente.
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleAgregar}
+                    className="explore-button"
+                    disabled={sinStock}
+                  >
+                    🛒 Agregar al carrito
+                  </button>
 
-              <Link to="/carrito" className="btn btn-secondary">
-                Ver carrito
-              </Link>
+                  <Link to="/carrito" className="btn btn-secondary">
+                    Ver carrito
+                  </Link>
+                </>
+              )}
 
               {/* Antes decía `user?.rol === 'admin'` — con una `rol` sin `e`.
                   El optional chaining hacía que fallara en silencio: el botón

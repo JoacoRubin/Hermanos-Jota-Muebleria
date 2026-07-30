@@ -736,6 +736,20 @@
   color: var(--texto-secundario);
 }
 
+/* Reemplaza a los botones de compra cuando mira un administrador. Mismo
+   lenguaje visual que el dato de stock interno: borde punteado = "esto lo
+   ves porque sos admin", no es parte de la vidriera. */
+.producto-detalle__aviso-admin {
+  margin: 0;
+  padding: 0.65rem 0.95rem;
+  background: rgba(160, 82, 45, 0.08);
+  border: 1px dashed rgba(160, 82, 45, 0.35);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  color: var(--texto-secundario);
+  line-height: 1.45;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    Pestañas de pedidos
    ══════════════════════════════════════════════════════════════════════════ */

@@ -393,3 +393,73 @@ test('la dirección de envío es obligatoria', async () => {
 
   assert.equal(res.status, 400)
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Las cuentas de administración no compran.
+//
+// Un admin es quien despacha, cancela y repone: si además pudiera pedir, el
+// mismo actor estaría a los dos lados del mostrador. Sus pedidos ensuciarían
+// las métricas de venta, descontarían stock real y aparecerían en su propio
+// panel de administración para que se los apruebe a sí mismo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('un administrador no puede crear pedidos', async () => {
+  const admin = await crearAdmin(app)
+  const producto = await crearProducto({ stock: 5 })
+
+  const res = await request(app)
+    .post('/api/orders')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({
+      items: [{ producto: producto._id.toString(), cantidad: 1 }],
+      direccionEnvio: direccionValida,
+    })
+
+  assert.equal(res.status, 403)
+})
+
+test('el pedido rechazado a un admin no crea nada ni toca el stock', async () => {
+  const Order = require('../src/models/Order')
+  const Product = require('../src/models/Product')
+
+  const admin = await crearAdmin(app)
+  const producto = await crearProducto({ stock: 5 })
+
+  await request(app)
+    .post('/api/orders')
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({
+      items: [{ producto: producto._id.toString(), cantidad: 2 }],
+      direccionEnvio: direccionValida,
+    })
+
+  // Esto es lo que obliga a que la guarda sea middleware y no una línea dentro
+  // del controller: ahí adentro el stock ya se reservó, y habría que acordarse
+  // de liberarlo. La request del admin no debe llegar a tocar el inventario.
+  const despues = await Product.findById(producto._id).select('stock').lean()
+  assert.equal(despues.stock, 5, 'el stock no se toca')
+  assert.equal(await Order.countDocuments(), 0, 'no se crea ningún pedido')
+})
+
+test('el admin sigue pudiendo cancelar el pedido de un cliente', async () => {
+  const usuario = await registrarUsuario(app)
+  const admin = await crearAdmin(app)
+  const producto = await crearProducto({ stock: 5 })
+
+  const creado = await request(app)
+    .post('/api/orders')
+    .set('Authorization', `Bearer ${usuario.token}`)
+    .send({
+      items: [{ producto: producto._id.toString(), cantidad: 1 }],
+      direccionEnvio: direccionValida,
+    })
+
+  assert.equal(creado.status, 201, 'el cliente SÍ puede comprar')
+
+  const res = await request(app)
+    .post(`/api/orders/${creado.body.data.id}/cancelar`)
+    .set('Authorization', `Bearer ${admin.token}`)
+    .send({ motivo: 'Sin stock en depósito' })
+
+  assert.equal(res.status, 200, 'cerrar la compra no puede cerrar la gestión')
+})

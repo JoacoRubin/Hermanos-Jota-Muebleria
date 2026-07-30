@@ -1,6 +1,10 @@
 const express = require('express')
 const ordersController = require('../controllers/orders.controller')
-const { authMiddleware, requireRole } = require('../middleware/auth')
+const {
+  authMiddleware,
+  requireRole,
+  bloquearAdmins,
+} = require('../middleware/auth')
 const { validate } = require('../middleware/validate')
 const { limiters } = require('../middleware/rateLimit')
 const { idParams } = require('../schemas/common')
@@ -36,9 +40,18 @@ router.put(
 )
 
 // ── Usuario autenticado ────────────────────────────────────────────────────
+/**
+ * `bloquearAdmins` va ANTES de `validate` y del controller a propósito: el
+ * controller arranca reservando stock, así que un rechazo tardío obligaría a
+ * liberar lo ya descontado. La request del admin no llega a tocar inventario.
+ *
+ * Que el frontend además le esconda el carrito NO reemplaza esto: aquello es
+ * UX, esto es la regla. Un `curl` con el token del admin entra por acá.
+ */
 router.post(
   '/',
   limiters.write,
+  bloquearAdmins,
   validate(createOrderSchema),
   ordersController.createOrder
 )

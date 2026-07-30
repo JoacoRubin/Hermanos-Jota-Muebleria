@@ -73,15 +73,25 @@ function ModernLayout({ children, title }) {
 
           {isAuthenticated ? (
             <>
-              <Link to="/carrito" className={`nav-link ${isActive('/carrito')}`}>
-                <span aria-hidden="true">🛒</span> Carrito ({totalItems})
-              </Link>
-              <Link
-                to="/mis-pedidos"
-                className={`nav-link ${isActive('/mis-pedidos')}`}
-              >
-                <span aria-hidden="true">📦</span> Mis pedidos
-              </Link>
+              {/* El admin no compra: sus links son los de gestión, más abajo.
+                  Ofrecerle un carrito que el backend le va a rechazar es
+                  prometer algo que la app no puede cumplir. */}
+              {!isAdmin && (
+                <>
+                  <Link
+                    to="/carrito"
+                    className={`nav-link ${isActive('/carrito')}`}
+                  >
+                    <span aria-hidden="true">🛒</span> Carrito ({totalItems})
+                  </Link>
+                  <Link
+                    to="/mis-pedidos"
+                    className={`nav-link ${isActive('/mis-pedidos')}`}
+                  >
+                    <span aria-hidden="true">📦</span> Mis pedidos
+                  </Link>
+                </>
+              )}
               <Link to="/perfil" className={`nav-link ${isActive('/perfil')}`}>
                 <span aria-hidden="true">👤</span>{' '}
                 {user?.nombre?.split(' ')[0] || 'Mi perfil'}

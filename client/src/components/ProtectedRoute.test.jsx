@@ -64,3 +64,60 @@ describe('ProtectedRoute', () => {
     expect(screen.getByText('Panel de administración')).toBeInTheDocument()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `bloquearAdmins`: la puerta que atrapa al admin que escribe /carrito a mano.
+//
+// Esconder el link del nav no alcanza, la URL sigue existiendo. Y esto tampoco
+// es seguridad —de eso se encarga el middleware `bloquearAdmins` sobre
+// POST /api/orders—: es no dejarlo entrar a una pantalla que no le sirve.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ProtectedRoute con bloquearAdmins', () => {
+  it('saca al admin de la pantalla de compra', () => {
+    sesion = {
+      isAuthenticated: true,
+      user: { id: 'a1', role: 'admin' },
+      isAdmin: true,
+    }
+
+    renderRuta(<p>Carrito</p>, { bloquearAdmins: true })
+
+    expect(screen.queryByText('Carrito')).not.toBeInTheDocument()
+    expect(screen.getByText('Inicio')).toBeInTheDocument()
+  })
+
+  it('no molesta al cliente', () => {
+    sesion = {
+      isAuthenticated: true,
+      user: { id: 'u1', role: 'user' },
+      isAdmin: false,
+    }
+
+    renderRuta(<p>Carrito</p>, { bloquearAdmins: true })
+
+    expect(screen.getByText('Carrito')).toBeInTheDocument()
+  })
+
+  // Sin sesión gana el login: quien no inició sesión no tiene que ver el
+  // mensaje de "las cuentas de administración no compran".
+  it('sin sesión sigue mandando al login, no al inicio', () => {
+    renderRuta(<p>Carrito</p>, { bloquearAdmins: true })
+
+    expect(screen.getByText('Pantalla de login')).toBeInTheDocument()
+  })
+
+  // La regla es "los admin no", no "solo los user". Si mañana existe otro rol,
+  // no queda afuera del carrito sin que nadie lo haya decidido.
+  it('un rol que no es admin pasa igual', () => {
+    sesion = {
+      isAuthenticated: true,
+      user: { id: 'v1', role: 'vendedor' },
+      isAdmin: false,
+    }
+
+    renderRuta(<p>Carrito</p>, { bloquearAdmins: true })
+
+    expect(screen.getByText('Carrito')).toBeInTheDocument()
+  })
+})

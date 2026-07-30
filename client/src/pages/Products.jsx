@@ -3,11 +3,16 @@ import ProductService from '../services/productService'
 import ModernLayout from '../components/ModernLayout'
 import ProductCard from '../components/products/ProductCard'
 import useAgregarAlCarrito from '../hooks/useAgregarAlCarrito'
+import { useAuth } from '../contexts/AuthContext'
 import { CATEGORIAS } from '../constants'
 
 function Products() {
   // Si no hay sesión, esto no agrega nada: manda a crear la cuenta.
   const handleAgregar = useAgregarAlCarrito()
+
+  // Quién puede comprar lo decide esta página, no la tarjeta: `ProductCard`
+  // sigue siendo presentacional y sin `undefined` no dibuja el botón.
+  const { isAdmin } = useAuth()
 
   const [productos, setProductos] = useState([])
   const [meta, setMeta] = useState(null)
@@ -110,7 +115,7 @@ function Products() {
                 <ProductCard
                   key={producto.id}
                   producto={producto}
-                  onAgregar={handleAgregar}
+                  onAgregar={isAdmin ? undefined : handleAgregar}
                 />
               ))}
             </div>

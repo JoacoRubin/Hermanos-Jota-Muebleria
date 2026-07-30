@@ -6,8 +6,12 @@ import useAgregarAlCarrito from './useAgregarAlCarrito'
 
 // Se controla la sesión desde el test sin montar el flujo real de auth.
 let usuarioLogueado = false
+let usuarioEsAdmin = false
 vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: usuarioLogueado }),
+  useAuth: () => ({
+    isAuthenticated: usuarioLogueado,
+    isAdmin: usuarioEsAdmin,
+  }),
 }))
 
 const addToCart = vi.fn()
@@ -55,6 +59,7 @@ const renderBoton = () =>
 beforeEach(() => {
   vi.clearAllMocks()
   usuarioLogueado = false
+  usuarioEsAdmin = false
 })
 
 describe('sin sesión', () => {
@@ -126,6 +131,53 @@ describe('con sesión', () => {
   })
 
   it('no interrumpe la navegación', async () => {
+    const user = userEvent.setup()
+    renderBoton()
+
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+})
+
+describe('con sesión de administrador', () => {
+  beforeEach(() => {
+    usuarioLogueado = true
+    usuarioEsAdmin = true
+  })
+
+  // Quien despacha y cancela no puede además comprar: sus pedidos descontarían
+  // stock real y caerían en su propio panel para que se los apruebe a sí mismo.
+  it('NO agrega nada al carrito', async () => {
+    const user = userEvent.setup()
+    renderBoton()
+
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+
+    expect(addToCart).not.toHaveBeenCalled()
+  })
+
+  it('no miente con un toast de éxito', async () => {
+    const user = userEvent.setup()
+    renderBoton()
+
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('explica por qué en vez de fallar en silencio', async () => {
+    const user = userEvent.setup()
+    renderBoton()
+
+    await user.click(screen.getByRole('button', { name: 'Agregar' }))
+
+    expect(toast.error).toHaveBeenCalled()
+  })
+
+  // Al admin no le falta una cuenta: le sobra rol. Mandarlo a /registro sería
+  // el guion equivocado.
+  it('no lo manda a registrarse', async () => {
     const user = userEvent.setup()
     renderBoton()
 

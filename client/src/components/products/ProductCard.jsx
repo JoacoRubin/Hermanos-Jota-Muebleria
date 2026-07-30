@@ -10,6 +10,10 @@ import { formatearPrecio } from '../../constants'
  *
  * Es la diferencia entre esconder un dato y no tenerlo. Un `{stock > 3 ? null
  * : ...}` acá dejaría el número igual en el JSON, a un F12 de distancia.
+ *
+ * `onAgregar` es OPCIONAL: sin handler no se dibuja el botón de compra. Así el
+ * componente sigue sin saber nada de roles —eso lo decide quien lo usa— y
+ * el catálogo del admin no muestra un botón que le va a rebotar.
  */
 function ProductCard({ producto, onAgregar }) {
   // `disponible` viene del servidor. No se calcula con `stock === 0` porque
@@ -56,14 +60,16 @@ function ProductCard({ producto, onAgregar }) {
       )}
 
       <div className="product-card__acciones">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => onAgregar(producto)}
-          disabled={sinStock}
-        >
-          <span aria-hidden="true">🛒</span> Agregar
-        </button>
+        {onAgregar && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onAgregar(producto)}
+            disabled={sinStock}
+          >
+            <span aria-hidden="true">🛒</span> Agregar
+          </button>
+        )}
         <Link to={`/productos/${producto.id}`} className="btn btn-secondary">
           Ver detalles
         </Link>

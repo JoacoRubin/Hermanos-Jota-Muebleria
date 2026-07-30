@@ -51,10 +51,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* Comprar es del cliente. El admin queda afuera del carrito y
+                  de "Mis pedidos": no puede generar pedidos propios, así que
+                  esa pantalla sería una lista vacía para siempre. Los pedidos
+                  que sí le importan están en /admin/pedidos. */}
               <Route
                 path="/carrito"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute bloquearAdmins>
                     <Cart />
                   </ProtectedRoute>
                 }
@@ -62,7 +66,7 @@ function App() {
               <Route
                 path="/mis-pedidos"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute bloquearAdmins>
                     <MisPedidos />
                   </ProtectedRoute>
                 }

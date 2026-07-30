@@ -111,7 +111,40 @@ function requireRole(...roles) {
   }
 }
 
+/**
+ * Cierra la ruta a las cuentas de administración. Se usa después de
+ * `authMiddleware`.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * POR QUÉ NO ES `requireRole('user')`
+ * ────────────────────────────────────────────────────────────────────────────
+ * Funcionaría hoy, porque `ROLES` tiene exactamente dos valores. Pero el día
+ * que aparezca un tercer rol —`vendedor`, `deposito`— `requireRole('user')` lo
+ * dejaría afuera de comprar sin que nadie lo haya decidido. La regla real no es
+ * "solo los user": es "los admin no". Se escribe la que es.
+ *
+ * Además el mensaje de `requireRole` habla de permisos de administrador, que
+ * acá sería exactamente al revés: al admin le sobra rol, no le falta.
+ */
+function bloquearAdmins(req, res, next) {
+  if (!req.user) {
+    return next(
+      ApiError.unauthorized('No autorizado. Debe iniciar sesión primero.')
+    )
+  }
+
+  if (req.user.role === 'admin') {
+    return next(
+      ApiError.forbidden(
+        'Las cuentas de administración no pueden comprar. Ingresá con una cuenta de cliente.'
+      )
+    )
+  }
+
+  next()
+}
+
 // Se eliminó `adminMiddleware = requireRole('admin')`: era un alias que no
 // usaba ninguna ruta —todas llaman a `requireRole('admin')` directo— y tener
 // dos formas de pedir lo mismo invita a que mañana solo una se actualice.
-module.exports = { authMiddleware, optionalAuth, requireRole }
+module.exports = { authMiddleware, optionalAuth, requireRole, bloquearAdmins }
