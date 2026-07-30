@@ -137,6 +137,11 @@ también contra un MongoDB standalone, sin exigir replica set.
 - `vercel.json` eliminado: el proyecto se despliega en Netlify
 - README corregido (decía `npm run dev` desde la raíz, donde no hay `package.json`)
 - `keepalive.yml`: falla si falta el secret en vez de pinguear un dominio ajeno; franja horaria acotada (~3.100 → ~1.300 ejecuciones/mes)
+  > **Superado (2026-07-30)**: este workflow se eliminó. Los cron de GitHub
+  > llegaban cada 58-71 min con un `*/10`, y los servicios duermen a los 15, así
+  > que no mantenía despierto nada. El keepalive pasó a Cloud Scheduler — ver
+  > `docs/DEPLOY.md` §6. Se deja el registro porque describe lo que se arregló
+  > entonces, no lo que hay hoy.
 - CI con lint + tests + build en `.github/workflows/ci.yml`
 - Formulario de contacto: ya no simula un envío que nunca ocurría; abre el cliente de correo
 - Apagado ordenado ante `SIGTERM` (Render lo manda en cada deploy)
