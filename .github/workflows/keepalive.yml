@@ -1,44 +1,76 @@
-name: Keep Render Service Alive
+name: Keep Services Alive
 
 on:
   schedule:
-    # Render duerme el servicio tras 15 min de inactividad.
+    # Cada 10 min y no cada 14: son DOS plataformas con ventanas distintas.
+    # Render duerme el servicio tras 15 min de inactividad; Cloud Run escala a
+    # cero y su ventana es más corta y menos predecible. El intervalo lo manda
+    # el más impaciente de los dos.
+    #
     # Corre las 24hs: los repos públicos tienen minutos de GitHub Actions
     # ilimitados y gratis, así que restringir el horario no ahorraba nada
     # y solo dificultaba diagnosticar si el ping estaba funcionando.
-    - cron: '*/14 * * * *'
+    #
+    # ⚠️ Los cron de GitHub Actions NO son puntuales: cuando la cola está
+    # cargada se retrasan varios minutos. Esto reduce los arranques en frío,
+    # no los elimina. La garantía de verdad sería `--min-instances=1` en Cloud
+    # Run, que se descartó a propósito porque cobra la instancia idle.
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:
   ping:
+    name: Ping ${{ matrix.nombre }}
     runs-on: ubuntu-latest
+
+    strategy:
+      # Sin fail-fast: si a un servicio le falta el secret o está caído, el otro
+      # tiene que pinguearse igual. Cancelar el ping del backend porque el RAG
+      # no contestó sería sabotearse solo.
+      fail-fast: false
+      matrix:
+        include:
+          # El backend Express en Render.
+          - nombre: backend (Render)
+            secret: RENDER_URL
+          # El microservicio RAG en Google Cloud Run (southamerica-east1).
+          # Su `GET /health` es público y devuelve {"status":"ok"} — si algún día
+          # se le pone auth al servicio, ESTE endpoint tiene que quedar abierto
+          # o el keepalive deja de funcionar en silencio.
+          - nombre: RAG (Cloud Run)
+            secret: RAG_URL
+
     steps:
       - name: Ping al health check
         env:
-          RENDER_URL: ${{ secrets.RENDER_URL }}
+          # El nombre del secret sale de la matrix, así el script vive una sola
+          # vez en vez de duplicarse por servicio.
+          URL: ${{ secrets[matrix.secret] }}
+          NOMBRE: ${{ matrix.nombre }}
+          SECRET: ${{ matrix.secret }}
         run: |
           set -euo pipefail
 
           # Antes había un fallback a 'https://tu-app.onrender.com': si el
           # secret no estaba cargado, el workflow pingueaba un dominio ajeno
           # y salía en verde. Un check que no puede fallar no sirve de nada.
-          if [ -z "${RENDER_URL}" ]; then
-            echo "::error::Falta el secret RENDER_URL (Settings → Secrets and variables → Actions)."
+          if [ -z "${URL}" ]; then
+            echo "::error::Falta el secret ${SECRET} (Settings → Secrets and variables → Actions)."
             exit 1
           fi
 
-          echo "Pingueando ${RENDER_URL}/health"
+          echo "Pingueando ${NOMBRE} en ${URL}/health"
 
           CODIGO=$(curl -s -o /tmp/respuesta.json -w "%{http_code}" \
             --max-time 90 --retry 2 --retry-delay 15 \
-            "${RENDER_URL}/health" || echo "000")
+            "${URL}/health" || echo "000")
 
           echo "Código de respuesta: ${CODIGO}"
           cat /tmp/respuesta.json 2>/dev/null || true
           echo
 
           if [ "${CODIGO}" != "200" ]; then
-            echo "::warning::El servicio no respondió 200 (puede estar arrancando)."
+            echo "::warning::${NOMBRE} no respondió 200 (puede estar arrancando)."
           else
-            echo "Servicio activo."
+            echo "${NOMBRE} activo."
           fi
